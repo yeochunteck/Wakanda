@@ -6,6 +6,4 @@
 - Lew Chin Hong A21EC0044
 - Gan Heng Lai A21EC0176
 
-Kai Zheng so handsome
-LCH in branch1
 HL create branch 2
