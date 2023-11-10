@@ -3,11 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:logger/logger.dart';
 import 'package:flutter_application_1/login_page.dart';
 import 'package:intl/intl.dart';
-import 'dart:io';
-import 'dart:async';
-
-import 'package:flutter_application_1/data/repositories/profile_repository.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 
 class ProfilePage extends StatelessWidget {
   final String companyId;
@@ -59,8 +54,11 @@ class ProfilePage extends StatelessWidget {
           ),
         ],
       ),
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: ProfileRepository().getUserData(companyId),
+      body: FutureBuilder<QuerySnapshot>(
+        future: FirebaseFirestore.instance
+            .collection('users')
+            .where('companyId', isEqualTo: companyId)
+            .get(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             // Loading indicator while fetching data
@@ -75,12 +73,20 @@ class ProfilePage extends StatelessWidget {
             );
           }
 
+          final documents = snapshot.data?.docs;
+
+          if (documents == null || documents.isEmpty) {
+            // User not found
+            return const Center(
+              child: Text('User not found.'),
+            );
+          }
+
           // User data found
-          final userData = snapshot.data;
-          // final imageUrl =
-          //     userData?['image']; // Replace 'image' with the actual field name
-          final imageUrl = userData?['image'] ?? '';
-          logger.i(imageUrl);
+          final userData = documents[0].data() as Map<String, dynamic>;
+          final imageUrl =
+              userData['image']; // Replace 'image' with the actual field name
+
           return Stack(
             children: [
               // Purple background
@@ -88,52 +94,20 @@ class ProfilePage extends StatelessWidget {
                 height: MediaQuery.of(context).size.height * 0.2,
                 color: const Color.fromRGBO(229, 63, 248, 1),
               ),
-              // White background with CircleAvatar
-
+              // White background
               Container(
                 height: MediaQuery.of(context).size.height * 0.17,
-                decoration: BoxDecoration(
-                  color: const Color.fromRGBO(229, 63, 248, 1),
-                  // image: DecorationImage(
-                  //   fit: BoxFit.cover,
-                  //   image: imageUrl!.isNotEmpty
-                  //       ? FileImage(File(imageUrl))
-                  //       : AssetImage('assets/images/logo.png')
-                  //           as ImageProvider<Object>,
-                  // ),
+                color: const Color.fromRGBO(229, 63, 248, 1),
+                child: const Align(
+                  alignment: Alignment.center,
+                  child: CircleAvatar(
+                    radius: 60,
+                    // Load the image from the fetched URL
+                    backgroundImage: AssetImage('assets/images/logo.png'),
+                    // NetworkImage(imageUrl),;
+                  ),
                 ),
-                // child: const Align(
-                alignment: Alignment.center,
-                child: CircleAvatar(
-                    radius: 70,
-                    // backgroundColor: Colors.grey[300],
-                    child: imageUrl != ''
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(70),
-                            child: Image.network('${imageUrl}',
-                                width: 140, height: 140, fit: BoxFit.cover),
-                          )
-                        : Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            //Person Icon
-                            children: const [
-                              Icon(
-                                Icons.person,
-                                size: 60,
-                                color: Colors.grey,
-                              ),
-                              Text(
-                                'No Image',
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 20,
-                                ),
-                              ),
-                            ],
-                          )),
               ),
-              // ),
-
               // Overlay with profile information
               // Wrap the Column with Padding to add top padding
               Container(
@@ -159,7 +133,7 @@ class ProfilePage extends StatelessWidget {
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        '${userData?['name']}',
+                        '${userData['name']}',
                         style: const TextStyle(
                             fontSize: 18,
                             color: Colors.black,
@@ -178,7 +152,7 @@ class ProfilePage extends StatelessWidget {
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        '${userData?['email']}',
+                        '${userData['email']}',
                         style: const TextStyle(
                             fontSize: 18,
                             color: Colors.black,
@@ -197,7 +171,7 @@ class ProfilePage extends StatelessWidget {
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        '${userData?['phone']}',
+                        '${userData['phone']}',
                         style: const TextStyle(
                             fontSize: 18,
                             color: Colors.black,
@@ -216,7 +190,7 @@ class ProfilePage extends StatelessWidget {
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        '${userData?['gender']}',
+                        '${userData['gender']}',
                         style: const TextStyle(
                             fontSize: 18,
                             color: Colors.black,
@@ -235,7 +209,7 @@ class ProfilePage extends StatelessWidget {
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        _formatDate(userData?['dateofbirth']),
+                        _formatDate(userData['dateofbirth']),
                         style: const TextStyle(
                             fontSize: 18,
                             color: Colors.black,
@@ -254,7 +228,7 @@ class ProfilePage extends StatelessWidget {
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        '${userData?['position']}',
+                        '${userData['position']}',
                         style: const TextStyle(
                             fontSize: 18,
                             color: Colors.black,

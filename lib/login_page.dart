@@ -18,8 +18,9 @@ class _HomePageState extends State<HomePage> {
       FirebaseFirestore.instance.collection('users');
 
   var logger = Logger();
-  Icon icon = Icon(Icons.visibility_off);
+  Icon icon = const Icon(Icons.visibility_off);
   bool obscure = true;
+  String userPosition = '';
 
   Future<bool> checkCredentials(String companyId, String password) async {
     try {
@@ -28,12 +29,14 @@ class _HomePageState extends State<HomePage> {
       for (final doc in querySnapshot.docs) {
         final userData = doc.data() as Map<String, dynamic>;
 
-        logger.i('companyID:' + companyId);
+        logger.i('companyID:$companyId');
         logger.i(userData['companyId']);
         logger.i(userData['password']);
 
         if (userData['companyId'] == companyId &&
             userData['password'] == password) {
+          userPosition = userData['position'];
+          logger.i(userPosition);
           return true; // Credentials match a user document
         }
       }
@@ -50,7 +53,7 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       resizeToAvoidBottomInset: false, //Solve Bottom overflow
       appBar: AppBar(
-        title: Text('Login Page'),
+        title: const Text('Login Page'),
         centerTitle: true,
       ),
       body: Center(
@@ -66,7 +69,7 @@ class _HomePageState extends State<HomePage> {
               Image.asset('assets/images/logo.png', width: 240, height: 240),
               const SizedBox(height: 10),
               // Text Inform user
-              Text(
+              const Text(
                 'Please fill up the form to login',
                 style: TextStyle(fontSize: 16),
               ),
@@ -81,9 +84,9 @@ class _HomePageState extends State<HomePage> {
                 ),
                 child: TextFormField(
                   controller: _companyIdController,
-                  style: TextStyle(color: Colors.black),
+                  style: const TextStyle(color: Colors.black),
                   obscureText: false,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     border: InputBorder.none, //Remove default line
                     hintText: "Enter Company ID",
                     labelText: "Company ID",
@@ -100,22 +103,22 @@ class _HomePageState extends State<HomePage> {
                 ),
                 child: TextFormField(
                   controller: _passwordController,
-                  style: TextStyle(color: Colors.black),
+                  style: const TextStyle(color: Colors.black),
                   obscureText: obscure,
                   decoration: InputDecoration(
                     border: InputBorder.none, //Remove default line
                     hintText: "Enter Password",
                     labelText: "Password",
-                    prefixIcon: Icon(Icons.lock),
+                    prefixIcon: const Icon(Icons.lock),
                     suffixIcon: IconButton(
                         onPressed: () {
                           setState(() {
                             if (obscure == true) {
                               obscure = false;
-                              icon = Icon(Icons.visibility);
+                              icon = const Icon(Icons.visibility);
                             } else {
                               obscure = true;
-                              icon = Icon(Icons.visibility_off);
+                              icon = const Icon(Icons.visibility_off);
                             }
                           });
                         },
@@ -134,14 +137,17 @@ class _HomePageState extends State<HomePage> {
                       await checkCredentials(companyId, password);
                   if (isValidCredentials) {
                     // User authentication successful
+                    // ignore: use_build_context_synchronously
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => MainPage(companyId: companyId),
+                        builder: (context) => MainPage(
+                            companyId: companyId, userPosition: userPosition),
                       ),
                     );
                   } else {
                     logger.w('Invalid Company ID or Password');
+                    // ignore: use_build_context_synchronously
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Invalid Company ID or Password'),
@@ -149,17 +155,17 @@ class _HomePageState extends State<HomePage> {
                     );
                   }
                 },
-                child: Text('Login',
-                    style: TextStyle(color: Colors.white, fontSize: 15.0)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.purple[300],
                   elevation: 4.0,
                   shadowColor: Colors.purple,
-                  minimumSize: Size(200, 50),
+                  minimumSize: const Size(200, 50),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30.0),
                   ),
                 ),
+                child: const Text('Login',
+                    style: TextStyle(color: Colors.white, fontSize: 15.0)),
               )
             ],
           ),
