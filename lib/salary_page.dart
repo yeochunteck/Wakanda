@@ -1,10 +1,87 @@
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_application_1/data/repositories/profile_repository.dart';
 import 'package:flutter_application_1/profile_page.dart';
+import 'package:flutter_application_1/edit_profile_page.dart';
 
-class SalaryPage extends StatelessWidget {
+class SalaryPage extends StatefulWidget {
+  @override
+  _SalaryPageState createState() => _SalaryPageState();
+
+  // State variable for basicSalary
+  // num basicSalary = 0.0;
+}
+
+class _SalaryPageState extends State<SalaryPage> {
   final logger = Logger();
+
+  // Define the TextEditingController
+  TextEditingController monthYearController = TextEditingController();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  @override
+  void initState() {
+    super.initState();
+
+    // Set the initial value to the current month and year
+    final DateTime now = DateTime.now();
+    monthYearController.text = '${now.month}-${now.year}';
+  }
+
+  Future<List<Map<String, dynamic>>> _getFilteredUsers() async {
+    final List<String> yearMonth = monthYearController.text.split('-');
+    final int selectedYear =
+        int.parse(yearMonth[1]); // Assuming year comes first in your format
+    final int selectedMonth = int.parse(yearMonth[0]);
+
+    final DateTime selectedDate =
+        DateTime(selectedYear, selectedMonth + 1, 0, 23, 59, 59);
+
+    logger.i('Selected Month: $selectedMonth');
+    logger.i('Selected Year: $selectedYear');
+    logger.i('Selected Date: $selectedDate');
+
+    final QuerySnapshot querySnapshot = await _firestore
+        .collection('users')
+        .where('joiningdate', isLessThanOrEqualTo: selectedDate)
+        .get();
+
+    final List<Map<String, dynamic>> filteredUsers = [];
+
+    for (final QueryDocumentSnapshot userDoc in querySnapshot.docs) {
+      final Map<String, dynamic> userData =
+          userDoc.data() as Map<String, dynamic>;
+
+      // Fetch the 'salaryHistory' subcollection
+      final QuerySnapshot salarySnapshot = await _firestore
+          .collection('users')
+          .doc(userDoc.id)
+          .collection('salaryHistory')
+          .orderBy('effectiveDate', descending: true)
+          .get();
+
+      // Iterate over the 'salaryHistory' documents (if any)
+      for (final QueryDocumentSnapshot salaryDoc in salarySnapshot.docs) {
+        final Map<String, dynamic> salaryData =
+            salaryDoc.data() as Map<String, dynamic>;
+
+        // Assuming 'effectiveDate' is a DateTime field in your salary document
+        if (salaryData['effectiveDate'] != null &&
+            salaryData['effectiveDate'].toDate().isBefore(selectedDate)) {
+          // This salary entry is effective within the selected month
+          final num basicSalaryTemp = salaryData['basicSalary'] ?? 0.0;
+          userData['basicSalary'] = basicSalaryTemp;
+          // widget.basicSalary = basicSalaryTemp;
+
+          // Add the user data with basic salary to the result list
+          filteredUsers.add(userData);
+          break; // Break the loop since we found the relevant salary entry
+        }
+      }
+    }
+
+    return filteredUsers;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,29 +104,89 @@ class SalaryPage extends StatelessWidget {
           style: TextStyle(color: Colors.black),
         ),
       ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: ProfileRepository().getAllUserData(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            // While data is being fetched
-            return Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            // If there's an error
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            // If there's no data
-            return Center(child: Text('No users found'));
-          } else {
-            // If data is available
-            return ListView.builder(
-              itemCount: snapshot.data!.length,
-              itemBuilder: (context, index) {
-                final userData = snapshot.data![index];
-                return buildEmployeeRectangle(context, userData);
+      body: Column(
+        children: [
+          // Month and Calendar Icon
+          // Padding around the Center widget
+          Padding(
+            padding: const EdgeInsets.all(16.0), // Adjust the padding as needed
+            child: GestureDetector(
+              onTap: () async {
+                // Show date picker and update the text when a date is selected
+                DateTime? pickedDate = await showDatePicker(
+                  context: context,
+                  
+                  initialDate: DateTime.now(),
+                  firstDate: DateTime(1900),
+                  lastDate: DateTime(2100),
+                );
+
+                if (pickedDate != null) {
+                  setState(() {
+                    monthYearController.text =
+                        '${pickedDate.month}-${pickedDate.year}';
+                  });
+                }
               },
-            );
-          }
-        },
+              child: Center(
+                child: Container(
+                  width: 160, // Adjust the width as needed
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300], // Set the background color to grey
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Month-Year Text
+                      Text(
+                        monthYearController
+                            .text, // Show selected month and year
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: const Color.fromRGBO(229, 63, 248, 1),
+                        ),
+                      ),
+                      SizedBox(width: 10),
+
+                      // Calendar Icon
+                      Icon(
+                        Icons.calendar_today,
+                        size: 30,
+                        color: Colors.black,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Employee Rectangles
+          Expanded(
+            child: FutureBuilder<List<Map<String, dynamic>>>(
+              future: _getFilteredUsers(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                } else if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return Center(child: Text('No users found'));
+                } else {
+                  return ListView.builder(
+                    itemCount: snapshot.data!.length,
+                    itemBuilder: (context, index) {
+                      final userData = snapshot.data![index];
+                      return buildEmployeeRectangle(context, userData);
+                    },
+                  );
+                }
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -57,14 +194,23 @@ class SalaryPage extends StatelessWidget {
   Widget buildEmployeeRectangle(
       BuildContext context, Map<String, dynamic> userData) {
     return GestureDetector(
-      onTap: () {
-        // Navigate to the ProfilePage with the selected companyId
-        Navigator.push(
+      onTap: () async {
+        // Navigate to the EditProfilePage with the selected companyId
+        final updatedBasicSalary = await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ProfilePage(companyId: userData['companyId']),
+            builder: (context) =>
+                EditProfilePage(companyId: userData['companyId']),
           ),
         );
+
+        // Check if there is an updated basicSalary and update the UI
+        if (updatedBasicSalary != null) {
+          setState(() {
+            // Update the 'basicSalary' for the specific user in filteredUsers
+            userData['basicSalary'] = updatedBasicSalary;
+          });
+        }
       },
       child: Container(
         margin: const EdgeInsets.all(8),
@@ -88,11 +234,19 @@ class SalaryPage extends StatelessWidget {
                         color: const Color.fromRGBO(229, 63, 248, 1)),
                   ),
                   SizedBox(height: 20), // Add space between Name and Position
-
                   Text(
-                    '${userData['position']}',
+                    'Basic Salary',
                     style: TextStyle(
                       fontSize: 18,
+                    ),
+                  ),
+                  Text(
+                    'RM ${userData['basicSalary'].toString()}',
+                    // 'RM ${widget.basicSalary.toString()}',
+                    // 'RM ${userData['basicSalary']}',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: const Color.fromRGBO(229, 63, 248, 1),
                     ),
                   ),
 
