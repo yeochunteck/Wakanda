@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:logger/logger.dart';
-import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import 'package:uuid/uuid.dart';
 import 'package:flutter/services.dart';
+import 'package:logger/logger.dart';
+import 'package:intl/intl.dart';
 
-import 'package:flutter_application_1/login_page.dart';
 import 'package:flutter_application_1/data/repositories/profile_repository.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 
 enum Gender { male, female }
 
@@ -20,44 +16,26 @@ final List<String> banks = [
   'Bank C'
 ]; // Add your bank names here
 
-class CreateUserPage extends StatefulWidget {
+class EditProfilePage extends StatefulWidget {
+  final String companyId;
+
+  EditProfilePage({Key? key, required this.companyId}) : super(key: key);
+
   @override
-  _CreateUserPageState createState() => _CreateUserPageState();
+  _EditProfilePageState createState() => _EditProfilePageState();
 }
 
-extension StringExtension on String? {
-  String? capitalizeFirstLetter() {
-    if (this == null || this!.isEmpty) {
-      return this;
-    }
-    return this![0].toUpperCase() + this!.substring(1);
-  }
-
-  String? formatName() {
-    if (this == null || this!.isEmpty) {
-      return this;
-    }
-    return this!
-        .toLowerCase()
-        .split(' ')
-        .map((word) => word.capitalizeFirstLetter())
-        .join(' ');
-  }
-}
-
-class _CreateUserPageState extends State<CreateUserPage> {
+class _EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
   final logger = Logger();
-  late String companyId; // User ID with the desired format
-  late int counter;
 
-  final TextEditingController nameController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController phoneController = TextEditingController();
-  final TextEditingController accountNumberController = TextEditingController();
-  final TextEditingController basicSalaryController = TextEditingController();
-  final TextEditingController epfNoController = TextEditingController();
-  final TextEditingController socsoNoController = TextEditingController();
+  TextEditingController nameController = TextEditingController();
+  TextEditingController emailController = TextEditingController();
+  TextEditingController phoneController = TextEditingController();
+  TextEditingController accountNumberController = TextEditingController();
+  TextEditingController basicSalaryController = TextEditingController();
+  TextEditingController epfNoController = TextEditingController();
+  TextEditingController socsoNoController = TextEditingController();
 
   String name = '';
   String email = '';
@@ -68,18 +46,80 @@ class _CreateUserPageState extends State<CreateUserPage> {
   String? pickedImagePath;
   String imageUrl = '';
   DateTime? joiningDate;
-
-  // Financial Information
+  bool status = true;
   String accountNumber = '';
   String? selectedBank;
   num basicSalary = 0.0;
   String epfNo = '';
   String socsoNo = '';
 
+  void updateSelectedGender(Gender? value) {
+    setState(() {
+      selectedGender = value;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Fetch user data when the page is initialized
+    fetchUserData();
+  }
+
+  Future<void> fetchUserData() async {
+    try {
+      final userData = await ProfileRepository().getUserData(widget.companyId);
+      // Convert Timestamp to DateTime for date fields
+      // DateTime? dateOfBirth = userData['dateOfBirth']?.toDate();
+      // DateTime? joiningDate = userData['joiningDate']?.toDate();
+
+      if (userData != null) {
+        // Set the fetched user data to the state variables
+        setState(() {
+          name = userData['name'] ?? '';
+          email = userData['email'] ?? '';
+          phone = userData['phone'] ?? '';
+          String genderFromFirestore =
+              userData['gender']; // Assuming the field is stored as a String
+          selectedGender =
+              genderFromFirestore == 'Male' ? Gender.male : Gender.female;
+          selectedPosition = userData['position'] ?? '';
+          pickedImagePath = userData['image'] ?? '';
+          dateOfBirth = userData['dateofbirth'].toDate() ?? '';
+          joiningDate = userData['joiningdate'].toDate() ?? '';
+          selectedBank = userData['bankName'] ?? '';
+          accountNumber = userData['accountNumber'] ?? '';
+          basicSalary = userData['basicSalary'] ?? '';
+          epfNo = userData['epfNo'] ?? '';
+          socsoNo = userData['socsoNo'] ?? '';
+
+          nameController.text = name;
+          emailController.text = email;
+          phoneController.text = phone;
+          accountNumberController.text = accountNumber;
+          basicSalaryController.text = basicSalary.toString();
+          epfNoController.text = epfNo;
+          socsoNoController.text = socsoNo;
+          // logger.i('This is selectedbank' + selectedBank1);
+          logger.i('This is' + nameController.text);
+          logger.i('This is imageURl $pickedImagePath');
+          // ... (populate other fields accordingly)
+        });
+      } else {
+        // Handle the case when user data is not found
+        logger.e('User data not found for companyId: ${widget.companyId}');
+      }
+    } catch (e) {
+      // Handle errors during data fetching
+      logger.e('Error fetching user data: $e');
+    }
+  }
+
   Future<void> _selectDateofBirth(BuildContext context) async {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: dateOfBirth ?? DateTime.now(),
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
     );
@@ -94,7 +134,7 @@ class _CreateUserPageState extends State<CreateUserPage> {
   Future<void> _selectJoiningDate(BuildContext context) async {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: joiningDate ?? DateTime.now(),
       firstDate: DateTime(1900),
       lastDate: DateTime(2100),
     );
@@ -106,113 +146,27 @@ class _CreateUserPageState extends State<CreateUserPage> {
     }
   }
 
-  void generateCompanyId() {
-    // Increment the counter to generate the next companyId
-    counter++;
-
-    // Use the fetched counter as the sequential part of the ID
-    companyId = 'PF${counter.toString().padLeft(4, '0')}';
-  }
-
-  Future<void> fetchLatestCounter() async {
-    try {
-      // Get data from users collection
-      final querySnapshot =
-          await FirebaseFirestore.instance.collection('users').get();
-
-      if (querySnapshot.docs.isNotEmpty) {
-        // Find the maximum counter value from existing user documents
-        final maxCounter = querySnapshot.docs
-            .map<int>((doc) =>
-                int.parse(doc.get('companyId').toString().substring(2)))
-            .reduce((value, element) => value > element ? value : element);
-
-        counter = maxCounter;
-      } else {
-        counter = 0; // Default to 0 if there are no existing user documents
-      }
-    } catch (e) {
-      print('Error fetching counter: $e');
-      counter = 0; // Default to 0 in case of an error
-    }
-  }
-
-  Future<void> _createUser() async {
+  Future<void> _updateProfile() async {
     if (_formKey.currentState?.validate() ?? false) {
       _formKey.currentState?.save();
 
-      // Check if an image is uploaded
-      if (pickedImagePath == null) {
-        showDialog(
-          context: context,
-          builder: (context) {
-            return AlertDialog(
-              title: Text('Error'),
-              content: Text('Please upload an image.'),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: Text('OK'),
-                ),
-              ],
-            );
-          },
-        );
-        return;
-      }
-
-      await fetchLatestCounter(); // Fetch the latest counter
-      generateCompanyId(); // Generate the userId with the desired format
-
-      // Generate the password based on the user's name and phone number
-      String firstName = name.split(' ').first.toUpperCase();
-      String birthMonth = DateFormat('MM').format(dateOfBirth!);
-      logger.i(birthMonth);
-      String birthDay = DateFormat('dd').format(dateOfBirth!);
-      logger.i(birthDay);
-      String generatedPassword = '$firstName$birthMonth$birthDay';
-      logger.d(generatedPassword);
-
       // Upload the image and get the imageUrl
-      imageUrl =
-          await ProfileRepository().uploadImage(pickedImagePath!, companyId);
+      imageUrl = await ProfileRepository()
+          .uploadImage(pickedImagePath!, widget.companyId);
 
-      // // Create user with the collected data
-      // await ProfileRepository().createUser({
-      //   'name': name.formatName(),
-      //   'email': email,
-      //   'phone': phone,
-      //   'gender': selectedGender
-      //       ?.toString()
-      //       .split('.')
-      //       .last // Convert enum to string
-      //       .capitalizeFirstLetter(),
-      //   'dateofbirth': dateOfBirth,
-      //   'position': selectedPosition,
-      //   'image': imageUrl,
-      //   'companyId': companyId,
-      //   'password': generatedPassword, // Include the generated password
-      // });
-      // Create user with the collected data
-      await ProfileRepository().createUser(
-        companyId,
+      // Update the user data with the collected data
+      await ProfileRepository().updateUser(
+        widget.companyId,
         {
-          'name': name.formatName(),
+          'name': name,
           'email': email,
           'phone': phone,
-          'gender': selectedGender
-              ?.toString()
-              .split('.')
-              .last // Convert enum to string
-              .capitalizeFirstLetter(),
+          'gender': selectedGender?.toString().split('.').last,
           'dateofbirth': dateOfBirth,
           'joiningdate': joiningDate,
           'position': selectedPosition,
           'image': imageUrl,
-          'companyId': companyId,
-          'password': generatedPassword, // Include the generated password
+          'status': status,
         },
         {
           'basicSalary': basicSalary,
@@ -228,19 +182,21 @@ class _CreateUserPageState extends State<CreateUserPage> {
       );
 
       // Navigate back to the profile page
-      Navigator.pop(context);
+      Navigator.pop(context, basicSalary);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    logger.i('Line144: $name');
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color.fromRGBO(
-            229, 63, 248, 1), // Set the background color to transparent
-        elevation: 0, // Remove the shadow
+        backgroundColor: const Color.fromRGBO(229, 63, 248, 1),
+        elevation: 0,
         iconTheme: const IconThemeData(
-            color: Colors.black, size: 30), // Set the icon color to black
+          color: Colors.black,
+          size: 30,
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
@@ -248,8 +204,8 @@ class _CreateUserPageState extends State<CreateUserPage> {
           },
         ),
         title: const Text(
-          'Create User',
-          style: TextStyle(color: Colors.black), // Set title color to black
+          'Edit Profile',
+          style: TextStyle(color: Colors.black),
         ),
       ),
       body: Padding(
@@ -270,6 +226,7 @@ class _CreateUserPageState extends State<CreateUserPage> {
                     logger.i('Image picked: ${pickedFile.path}');
                     setState(() {
                       pickedImagePath = pickedFile.path;
+                      logger.i('New image path: $pickedImagePath');
                     });
                   }
                 },
@@ -278,15 +235,42 @@ class _CreateUserPageState extends State<CreateUserPage> {
                   radius: 70,
                   backgroundColor: Colors.grey[300],
                   child: pickedImagePath != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(70),
-                          child: Image.file(
-                            File(pickedImagePath!),
-                            width: 140,
-                            height: 140,
-                            fit: BoxFit.cover,
-                          ),
-                        )
+                      ? pickedImagePath!
+                              .startsWith('http') // Check if the path is a URL
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(70),
+                              child: Image.network(
+                                pickedImagePath!,
+                                width: 140,
+                                height: 140,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  // Handle errors for network images
+                                  return Icon(
+                                    Icons.error,
+                                    size: 45,
+                                    color: Colors.red,
+                                  );
+                                },
+                              ),
+                            )
+                          : ClipRRect(
+                              borderRadius: BorderRadius.circular(70),
+                              child: Image.file(
+                                File(pickedImagePath!),
+                                width: 140,
+                                height: 140,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  // Handle errors for local images
+                                  return Icon(
+                                    Icons.error,
+                                    size: 45,
+                                    color: Colors.red,
+                                  );
+                                },
+                              ),
+                            )
                       : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -307,6 +291,7 @@ class _CreateUserPageState extends State<CreateUserPage> {
                         ),
                 ),
               ),
+
               const SizedBox(height: 20),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -320,8 +305,8 @@ class _CreateUserPageState extends State<CreateUserPage> {
               ),
               // Personal Information Section
               TextFormField(
-                controller: nameController,
                 decoration: InputDecoration(labelText: 'Name'),
+                controller: nameController,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please enter your name';
@@ -329,10 +314,11 @@ class _CreateUserPageState extends State<CreateUserPage> {
                   return null;
                 },
                 onSaved: (value) => name = value ?? '',
+                // initialValue: name, // Set the initial value;
               ),
               TextFormField(
-                controller: emailController,
                 decoration: InputDecoration(labelText: 'Email'),
+                controller: emailController,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please enter your email';
@@ -355,8 +341,8 @@ class _CreateUserPageState extends State<CreateUserPage> {
               ),
 
               TextFormField(
-                controller: phoneController,
                 decoration: InputDecoration(labelText: 'Phone'),
+                controller: phoneController,
                 keyboardType: TextInputType.phone,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
@@ -381,20 +367,16 @@ class _CreateUserPageState extends State<CreateUserPage> {
                     Radio<Gender>(
                       value: Gender.male,
                       groupValue: selectedGender,
-                      onChanged: (Gender? value) {
-                        setState(() {
-                          selectedGender = value;
-                        });
+                      onChanged: (value) {
+                        updateSelectedGender(value);
                       },
                     ),
                     const Text('Male'),
                     Radio<Gender>(
                       value: Gender.female,
                       groupValue: selectedGender,
-                      onChanged: (Gender? value) {
-                        setState(() {
-                          selectedGender = value;
-                        });
+                      onChanged: (value) {
+                        updateSelectedGender(value);
                       },
                     ),
                     const Text('Female'),
@@ -443,6 +425,7 @@ class _CreateUserPageState extends State<CreateUserPage> {
                   ),
                 ),
               ),
+
               // Dropdown list for position
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -484,8 +467,8 @@ class _CreateUserPageState extends State<CreateUserPage> {
 
               // Bank Details Section
               TextFormField(
-                controller: accountNumberController,
                 decoration: InputDecoration(labelText: 'Account Number'),
+                controller: accountNumberController,
                 keyboardType: TextInputType.phone,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
@@ -540,8 +523,8 @@ class _CreateUserPageState extends State<CreateUserPage> {
 
               // Financial Information
               TextFormField(
-                controller: basicSalaryController,
                 decoration: InputDecoration(labelText: 'Basic Salary (RM)'),
+                controller: basicSalaryController,
                 keyboardType: TextInputType.phone,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
@@ -558,8 +541,8 @@ class _CreateUserPageState extends State<CreateUserPage> {
 
               // EPF No
               TextFormField(
-                controller: epfNoController,
                 decoration: InputDecoration(labelText: 'EPF No (Optional)'),
+                controller: epfNoController,
                 keyboardType: TextInputType.phone,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
@@ -578,8 +561,8 @@ class _CreateUserPageState extends State<CreateUserPage> {
 
               // SOCSO No
               TextFormField(
-                controller: socsoNoController,
                 decoration: InputDecoration(labelText: 'SOCSO No (Optional)'),
+                controller: socsoNoController,
                 keyboardType: TextInputType.text,
                 onSaved: (value) => socsoNo = value ?? '',
               ),
@@ -595,11 +578,11 @@ class _CreateUserPageState extends State<CreateUserPage> {
 
               const SizedBox(height: 20),
               ElevatedButton(
-                onPressed: _createUser,
+                onPressed: _updateProfile,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color.fromRGBO(229, 63, 248, 1),
                 ),
-                child: const Text('Create User'),
+                child: const Text('Update User'),
               ),
             ],
           ),
