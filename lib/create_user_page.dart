@@ -51,6 +51,14 @@ class _CreateUserPageState extends State<CreateUserPage> {
   late String companyId; // User ID with the desired format
   late int counter;
 
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController accountNumberController = TextEditingController();
+  final TextEditingController basicSalaryController = TextEditingController();
+  final TextEditingController epfNoController = TextEditingController();
+  final TextEditingController socsoNoController = TextEditingController();
+
   String name = '';
   String email = '';
   String phone = '';
@@ -64,7 +72,7 @@ class _CreateUserPageState extends State<CreateUserPage> {
   // Financial Information
   String accountNumber = '';
   String? selectedBank;
-  double basicSalary = 0.0;
+  num basicSalary = 0.0;
   String epfNo = '';
   String socsoNo = '';
 
@@ -312,6 +320,7 @@ class _CreateUserPageState extends State<CreateUserPage> {
               ),
               // Personal Information Section
               TextFormField(
+                controller: nameController,
                 decoration: InputDecoration(labelText: 'Name'),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -322,6 +331,7 @@ class _CreateUserPageState extends State<CreateUserPage> {
                 onSaved: (value) => name = value ?? '',
               ),
               TextFormField(
+                controller: emailController,
                 decoration: InputDecoration(labelText: 'Email'),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -345,6 +355,7 @@ class _CreateUserPageState extends State<CreateUserPage> {
               ),
 
               TextFormField(
+                controller: phoneController,
                 decoration: InputDecoration(labelText: 'Phone'),
                 keyboardType: TextInputType.phone,
                 inputFormatters: [
@@ -432,7 +443,6 @@ class _CreateUserPageState extends State<CreateUserPage> {
                   ),
                 ),
               ),
-
               // Dropdown list for position
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -474,6 +484,7 @@ class _CreateUserPageState extends State<CreateUserPage> {
 
               // Bank Details Section
               TextFormField(
+                controller: accountNumberController,
                 decoration: InputDecoration(labelText: 'Account Number'),
                 keyboardType: TextInputType.phone,
                 inputFormatters: [
@@ -529,6 +540,7 @@ class _CreateUserPageState extends State<CreateUserPage> {
 
               // Financial Information
               TextFormField(
+                controller: basicSalaryController,
                 decoration: InputDecoration(labelText: 'Basic Salary (RM)'),
                 keyboardType: TextInputType.phone,
                 inputFormatters: [
@@ -541,11 +553,12 @@ class _CreateUserPageState extends State<CreateUserPage> {
                   // You can add additional salary validation logic here if needed
                   return null;
                 },
-                onSaved: (value) => basicSalary = double.parse(value ?? '0'),
+                onSaved: (value) => basicSalary = num.parse(value ?? '0'),
               ),
 
               // EPF No
               TextFormField(
+                controller: epfNoController,
                 decoration: InputDecoration(labelText: 'EPF No (Optional)'),
                 keyboardType: TextInputType.phone,
                 inputFormatters: [
@@ -565,6 +578,7 @@ class _CreateUserPageState extends State<CreateUserPage> {
 
               // SOCSO No
               TextFormField(
+                controller: socsoNoController,
                 decoration: InputDecoration(labelText: 'SOCSO No (Optional)'),
                 keyboardType: TextInputType.text,
                 onSaved: (value) => socsoNo = value ?? '',
