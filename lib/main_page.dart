@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
+import 'package:flutter_application_1/salary_page.dart';
 import 'package:flutter_application_1/login_page.dart';
 import 'package:flutter_application_1/profile_page.dart';
 import 'package:flutter_application_1/create_user_page.dart';
@@ -106,6 +107,22 @@ class _MainPageState extends State<MainPage> {
                   Icon(Icons.logout),
                   SizedBox(width: 10),
                   Text('Logout'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => SalaryPage()),
+                );
+              },
+              child: const Row(
+                children: [
+                  Icon(Icons.money),
+                  SizedBox(width: 10),
+                  Text('Salary Page'),
                 ],
               ),
             ),
