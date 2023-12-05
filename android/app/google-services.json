@@ -1,0 +1,105 @@
+{
+  "project_info": {
+    "project_number": "630749909011",
+    "project_id": "human-resource-pjt",
+    "storage_bucket": "human-resource-pjt.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:630749909011:android:312a17e279d7ba668eafe6",
+        "android_client_info": {
+          "package_name": "com.example.first_project"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDmi-oGA0dXvEwGfu-jah1bzhkBouwP8uU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:630749909011:android:154adf1bf0552b218eafe6",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDmi-oGA0dXvEwGfu-jah1bzhkBouwP8uU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:630749909011:android:569e8f80b120c3468eafe6",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDmi-oGA0dXvEwGfu-jah1bzhkBouwP8uU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:630749909011:android:376e641e5f6599748eafe6",
+        "android_client_info": {
+          "package_name": "com.example.hrapplication"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDmi-oGA0dXvEwGfu-jah1bzhkBouwP8uU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:630749909011:android:95b1c0e11fcf38f88eafe6",
+        "android_client_info": {
+          "package_name": "com.purplefashion.hr"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDmi-oGA0dXvEwGfu-jah1bzhkBouwP8uU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
