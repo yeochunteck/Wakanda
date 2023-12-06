@@ -28,6 +28,7 @@ class EditProfilePage extends StatefulWidget {
 class _EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
   final logger = Logger();
+  bool isEditing = false;
 
   TextEditingController nameController = TextEditingController();
   TextEditingController emailController = TextEditingController();
@@ -85,7 +86,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           selectedGender =
               genderFromFirestore == 'Male' ? Gender.male : Gender.female;
           selectedPosition = userData['position'] ?? '';
-          pickedImagePath = userData['image'] ?? '';
+          pickedImagePath = userData['image'];
           dateOfBirth = userData['dateofbirth'].toDate() ?? '';
           joiningDate = userData['joiningdate'].toDate() ?? '';
           selectedBank = userData['bankName'] ?? '';
@@ -150,9 +151,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (_formKey.currentState?.validate() ?? false) {
       _formKey.currentState?.save();
 
-      // Upload the image and get the imageUrl
-      imageUrl = await ProfileRepository()
-          .uploadImage(pickedImagePath!, widget.companyId);
+      if (pickedImagePath != null && pickedImagePath!.startsWith('http')) {
+        // If it's an HTTP URL, set imageUrl directly
+        imageUrl = pickedImagePath!;
+        logger.i("Using existing imageUrl: $imageUrl");
+      } else if (pickedImagePath != null) {
+        // If it's a local file path, upload the image and get the imageUrl
+        imageUrl = await ProfileRepository()
+            .uploadImage(pickedImagePath!, widget.companyId);
+        logger.i("Uploaded imageUrl: $imageUrl");
+      } else {
+        // Handle the case where pickedImagePath is null
+        logger.i("Error: pickedImagePath is null");
+      }
 
       // Update the user data with the collected data
       await ProfileRepository().updateUser(
@@ -181,8 +192,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
         },
       );
 
+      Map<String, dynamic> result = {
+        'name': name,
+        'email': email,
+        'phone': phone,
+      };
+
       // Navigate back to the profile page
-      Navigator.pop(context, basicSalary);
+      Navigator.pop(context, result);
     }
   }
 
@@ -203,10 +220,20 @@ class _EditProfilePageState extends State<EditProfilePage> {
             Navigator.pop(context);
           },
         ),
-        title: const Text(
-          'Edit Profile',
-          style: TextStyle(color: Colors.black),
+        title: Text(
+          isEditing ? 'Edit Profile' : 'View Profile',
+          style: const TextStyle(color: Colors.black),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(isEditing ? null : Icons.edit),
+            onPressed: () {
+              setState(() {
+                isEditing = !isEditing; // Toggle between edit and view mode
+              });
+            },
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -216,25 +243,28 @@ class _EditProfilePageState extends State<EditProfilePage> {
             children: [
               // GestureDetector for image upload
               GestureDetector(
-                onTap: () async {
-                  // Open the image picker
-                  final pickedFile = await ImagePicker()
-                      .pickImage(source: ImageSource.gallery);
+                onTap: isEditing
+                    ? () async {
+                        // Open the image picker
+                        final pickedFile = await ImagePicker()
+                            .pickImage(source: ImageSource.gallery);
 
-                  if (pickedFile != null) {
-                    // Handle the picked image (you may want to save it to Firebase Storage)
-                    logger.i('Image picked: ${pickedFile.path}');
-                    setState(() {
-                      pickedImagePath = pickedFile.path;
-                      logger.i('New image path: $pickedImagePath');
-                    });
-                  }
-                },
+                        if (pickedFile != null) {
+                          // Handle the picked image (you may want to save it to Firebase Storage)
+                          logger.i('Image picked: ${pickedFile.path}');
+                          setState(() {
+                            pickedImagePath = pickedFile.path;
+                            logger.i('New image path: $pickedImagePath');
+                          });
+                        }
+                      }
+                    : null, // Disable onTap when not editing
+
                 // CircleAvatar for image upload indication
                 child: CircleAvatar(
                   radius: 70,
                   backgroundColor: Colors.grey[300],
-                  child: pickedImagePath != null
+                  child: pickedImagePath != null && pickedImagePath != ""
                       ? pickedImagePath!
                               .startsWith('http') // Check if the path is a URL
                           ? ClipRRect(
@@ -305,6 +335,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
               // Personal Information Section
               TextFormField(
+                readOnly: !isEditing,
                 decoration: InputDecoration(labelText: 'Name'),
                 controller: nameController,
                 validator: (value) {
@@ -317,6 +348,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 // initialValue: name, // Set the initial value;
               ),
               TextFormField(
+                readOnly: !isEditing,
                 decoration: InputDecoration(labelText: 'Email'),
                 controller: emailController,
                 validator: (value) {
@@ -341,6 +373,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
 
               TextFormField(
+                readOnly: !isEditing,
                 decoration: InputDecoration(labelText: 'Phone'),
                 controller: phoneController,
                 keyboardType: TextInputType.phone,
@@ -361,32 +394,36 @@ class _EditProfilePageState extends State<EditProfilePage> {
               // Row with radio buttons for gender
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Row(
-                  children: [
-                    const Text('Gender:'),
-                    Radio<Gender>(
-                      value: Gender.male,
-                      groupValue: selectedGender,
-                      onChanged: (value) {
-                        updateSelectedGender(value);
-                      },
-                    ),
-                    const Text('Male'),
-                    Radio<Gender>(
-                      value: Gender.female,
-                      groupValue: selectedGender,
-                      onChanged: (value) {
-                        updateSelectedGender(value);
-                      },
-                    ),
-                    const Text('Female'),
-                  ],
+                child: IgnorePointer(
+                  ignoring: !isEditing,
+                  child: Row(
+                    children: [
+                      const Text('Gender:'),
+                      Radio<Gender>(
+                        value: Gender.male,
+                        groupValue: selectedGender,
+                        onChanged: (value) {
+                          updateSelectedGender(value);
+                        },
+                      ),
+                      const Text('Male'),
+                      Radio<Gender>(
+                        value: Gender.female,
+                        groupValue: selectedGender,
+                        onChanged: (value) {
+                          updateSelectedGender(value);
+                        },
+                      ),
+                      const Text('Female'),
+                    ],
+                  ),
                 ),
               ),
 
               GestureDetector(
-                onTap: () => _selectDateofBirth(context),
+                onTap: isEditing ? () => _selectDateofBirth(context) : null,
                 child: AbsorbPointer(
+                  absorbing: !isEditing, // Set this based on your condition
                   child: TextFormField(
                     decoration: InputDecoration(labelText: 'Date of Birth'),
                     validator: (value) {
@@ -406,7 +443,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
 
               GestureDetector(
-                onTap: () => _selectJoiningDate(context),
+                onTap: isEditing ? () => _selectJoiningDate(context) : null,
                 child: AbsorbPointer(
                   child: TextFormField(
                     decoration: InputDecoration(labelText: 'Joining Date'),
@@ -438,11 +475,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       child: Text(position),
                     );
                   }).toList(),
-                  onChanged: (String? value) {
-                    setState(() {
-                      selectedPosition = value;
-                    });
-                  },
+                  onChanged: isEditing
+                      ? (String? value) {
+                          setState(() {
+                            selectedPosition = value;
+                          });
+                        }
+                      : null,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Please choose your position';
@@ -467,6 +506,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
               // Bank Details Section
               TextFormField(
+                readOnly: !isEditing,
                 decoration: InputDecoration(labelText: 'Account Number'),
                 controller: accountNumberController,
                 keyboardType: TextInputType.phone,
@@ -494,11 +534,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       child: Text(bank),
                     );
                   }).toList(),
-                  onChanged: (String? value) {
-                    setState(() {
-                      selectedBank = value;
-                    });
-                  },
+                  onChanged: isEditing
+                      ? (String? value) {
+                          setState(() {
+                            selectedBank = value;
+                          });
+                        }
+                      : null,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Please choose your bank';
@@ -523,6 +565,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
               // Financial Information
               TextFormField(
+                readOnly: !isEditing,
                 decoration: InputDecoration(labelText: 'Basic Salary (RM)'),
                 controller: basicSalaryController,
                 keyboardType: TextInputType.phone,
@@ -541,6 +584,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
               // EPF No
               TextFormField(
+                readOnly: !isEditing,
                 decoration: InputDecoration(labelText: 'EPF No (Optional)'),
                 controller: epfNoController,
                 keyboardType: TextInputType.phone,
@@ -561,6 +605,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
               // SOCSO No
               TextFormField(
+                readOnly: !isEditing,
                 decoration: InputDecoration(labelText: 'SOCSO No (Optional)'),
                 controller: socsoNoController,
                 keyboardType: TextInputType.text,
@@ -577,12 +622,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
 
               const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _updateProfile,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color.fromRGBO(229, 63, 248, 1),
+              Visibility(
+                visible: isEditing,
+                child: ElevatedButton(
+                  onPressed: _updateProfile,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color.fromRGBO(229, 63, 248, 1),
+                  ),
+                  child: const Text('Update User'),
                 ),
-                child: const Text('Update User'),
               ),
             ],
           ),
