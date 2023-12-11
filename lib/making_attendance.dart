@@ -8,6 +8,8 @@ import 'package:geocoding/geocoding.dart';
 import 'dart:developer' as developer;
 import 'package:logger/logger.dart';
 import 'dart:ui';
+import 'package:flutter/services.dart';
+
 
 final logger = Logger(
   printer: PrettyPrinter(
@@ -41,6 +43,13 @@ class _AttendancePageState extends State<AttendancePage> {
   Timer? _listenerTimer;
   Timer? _validateTimer;
   bool _isProcessing = false;
+  // Variables to track the documents for revert/removal
+  DocumentReference? _recentlyCheckInDoc;
+  DocumentSnapshot? _recentlyCheckOutDoc;
+  bool? expectedStatus;
+  bool? initialButtonState;
+
+  
   
   
   @override
@@ -48,7 +57,7 @@ class _AttendancePageState extends State<AttendancePage> {
     super.initState();
     _getCurrentDate();
     _requestLocationPermission();
-    _startListenerRefresh(); // Start the timer for listener refresh
+    //_startListenerRefresh(); // Start the timer for listener refresh
     _listenToAttendanceChanges();
   }
 
@@ -59,9 +68,19 @@ void _listenToAttendanceChanges() {
       .collection(_currentDate)
       .orderBy('CheckInTime', descending: true)
       .limit(1)
-      .snapshots()
+      .snapshots(includeMetadataChanges: true)
       .listen((QuerySnapshot snapshot) {
     try{
+      snapshot.docChanges.forEach((change) {
+        var metadata = change.doc.metadata;
+        if (metadata.hasPendingWrites) {
+          print('Data came frFom the local cache');
+        } else {
+          print('Data came from the server');
+        }
+
+    // Handle other changes in the snapshot as needed
+      });
       if (snapshot.docs.isNotEmpty) {
         DocumentSnapshot latestRecord = snapshot.docs.first;
 
@@ -100,10 +119,17 @@ void _listenToAttendanceChanges() {
         });
         logger.i('No attendance record found'); // Indicate that no record exists
       }
+      if (expectedStatus != null){
+        _checkLatestRecordStatus(expectedStatus: expectedStatus);
+      }
     }catch(e){
       logger.e('Error listenining to attendance changes: $e');
     }
-  });
+  },
+  onError: (error){
+    logger.e('Error fetching user data: $error'); // Error level log for errors
+  }
+  );
 }
 
 void _startListenerRefresh() {
@@ -231,6 +257,10 @@ void dispose() {
   _stopListenerRefresh(); // Stop the timer when the widget is disposed
   _attendanceStream?.cancel(); // Cancel the stream subscription;
   _validateTimer?.cancel();
+  // Revert database changes if the process is still ongoing when the user exits the page
+  if(_isProcessing){
+    _revertOrRemoveDocuments();
+  }
   super.dispose();
 }
 
@@ -255,9 +285,12 @@ void dispose() {
   
 Future<void> _checkInOut() async {
   try {
+    // Set initial button state
+    initialButtonState = _isCheckedIn;
+    
     setState(() {
-        _isProcessing = true; // Start the processing/loading indicator
-      });
+      _isProcessing = true; // Start the processing/loading indicator
+    });
 
     Position position = await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high,
@@ -271,93 +304,114 @@ Future<void> _checkInOut() async {
     String timeKey =
         '${DateTime.now().hour}:${DateTime.now().minute}:${DateTime.now().second}';
 
-    // Check the latest attendance type
     bool isCheckIn = await _getLastAttendanceType();
 
     DocumentReference latestAttendanceDoc;
 
     if (!isCheckIn) {
-      // If the latest record is a check-in, create a new document for check-out
-      await _firestore
+      final checkInDocRef = _firestore
           .collection('Attendance')
           .doc(widget.companyId)
           .collection(_currentDate)
-          .doc()
-          .set({
-            'CheckInLocation': geoPoint,
-            'CheckInTime': timeKey,
-          });
+          .doc();
 
-      // Fetch the latest attendance document after check-in
+      await checkInDocRef.set({
+        'CheckInLocation': geoPoint,
+        'CheckInTime': timeKey,
+      });
+
+      _recentlyCheckInDoc = checkInDocRef;
+
       latestAttendanceDoc = await _getLatestAttendanceDoc();
-
-      // Check the status of the latest record after check-in
-        /*var latestDocData = (await latestAttendanceDoc.get()).data();
-        if (latestDocData != null &&
-            latestDocData is Map<String, dynamic> &&
-            latestDocData.containsKey('CheckOutTime')) {
-          // If the status is already check-out, inform the user and return
-          /*ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                  'Check-out process is currently unavailable. Please retry after a moment.'),
-              duration: Duration(seconds: 5), // Display for 5 seconds (adjust as needed)
-            ),
-          );*/
-            _showUnavailableCheckoutDialog();
-          
-        }*/
-
     } else {
-      // Get the latest attendance document before updating
       latestAttendanceDoc = await _getLatestAttendanceDoc();
 
-      // If the latest record is a check-out, update the existing document
+      _recentlyCheckOutDoc = await latestAttendanceDoc.get();
+
       await latestAttendanceDoc.update({
         'CheckOutLocation': geoPoint,
         'CheckOutTime': timeKey,
       });
 
-
-      // Fetch the latest attendance document after check-out
       latestAttendanceDoc = await _getLatestAttendanceDoc();
-      
     }
 
-    // Log the latest attendance document after check-in or check-out
     var latestDocId = latestAttendanceDoc.id;
     var latestDocData = (await latestAttendanceDoc.get()).data();
-    logger.d('Latest Attendance Document ID after Action: $latestDocId');
-    logger.d('Latest Attendance Document Data after Action: $latestDocData');
-     // Check if the latest attendance record matches the expected status
-    bool expectedStatus = !isCheckIn;
+    var metadata = (await latestAttendanceDoc.get()).metadata;
+
+    // Check metadata for source information
+    if (metadata.isFromCache) {
+      logger.d('Data retrieved from local cache');
+    } else {
+      logger.d('Data retrieved from server');
+    }
+
+    expectedStatus = !isCheckIn;
     bool latestRecordStatus = !(latestDocData != null &&
         latestDocData is Map<String, dynamic> &&
         latestDocData.containsKey('CheckOutTime'));
 
     if (latestRecordStatus != expectedStatus) {
-      // Set a flag to indicate processing
       setState(() {
         _isProcessing = true;
       });
-
-      // Check continuously until the expected status is reached
-      _checkLatestRecordStatus(expectedStatus: expectedStatus);
     } else {
-      // Reset processing flag if the status matches
+      if(_isCheckedIn != initialButtonState){
+        setState(() {
+        _isProcessing = false;
+        _recentlyCheckInDoc = null;
+        _recentlyCheckOutDoc = null;
+      });}
+      
+    }
+
+    // Stop the processing/loading indicator immediately if the button state changes
+    if (initialButtonState != _isCheckedIn) {
       setState(() {
         _isProcessing = false;
       });
     }
   } catch (e) {
     print("Error checking in/out: $e");
+    _revertOrRemoveDocuments(); // Revert or remove documents on error
+
+    // Stop the processing/loading indicator in case of an error
+    /*setState(() {
+      _isProcessing = false;
+    });*/
   }
 }
 
- void _checkLatestRecordStatus({required bool expectedStatus}) {
+
+ void _revertOrRemoveDocuments() async {
+    if (_recentlyCheckInDoc != null) {
+      // Remove the recently added document
+      await _recentlyCheckInDoc!.delete();
+      _recentlyCheckInDoc = null; // Reset reference after removal
+    }
+    if (_recentlyCheckOutDoc != null) {
+      // Revert the recently changed document
+      await _recentlyCheckOutDoc!.reference.set(_recentlyCheckOutDoc!.data()!);
+      _recentlyCheckOutDoc = null; // Reset reference after revert
+    }
+  }
+ 
+ /*void _checkLatestRecordStatus({required bool expectedStatus}) {
     _validateTimer = Timer.periodic(Duration(seconds: 5), (timer) async {
       DocumentReference latestAttendanceDoc = await _getLatestAttendanceDoc();
+      
       var latestDocData = (await latestAttendanceDoc.get()).data();
+      
+      // Log the latest attendance document after check-in or check-out
+      var metadata = (await latestAttendanceDoc.get()).metadata;
+     // Check metadata for source information
+    if (metadata.isFromCache) {
+      logger.d('Data retrieved from local cache');
+    } else {
+      logger.d('Data retrieved from server');
+    }
+
       bool latestRecordStatus = !(latestDocData != null &&
           latestDocData is Map<String, dynamic> &&
           latestDocData.containsKey('CheckOutTime'));
@@ -366,6 +420,8 @@ Future<void> _checkInOut() async {
         timer.cancel(); // Stop the timer if the expected status is reached
         setState(() {
           _isProcessing = false; // Reset the processing flag
+          _recentlyCheckInDoc = null;
+          _recentlyCheckOutDoc = null;
         });
       } else {
         print('Latest record status does not match the expected status');
@@ -373,7 +429,29 @@ Future<void> _checkInOut() async {
         // await Future.delayed(Duration(seconds: 5));
       }
     });
-  }
+  }*/
+
+
+
+Future<void> _checkLatestRecordStatus({required bool? expectedStatus}) async {
+  //while (true) {
+    // Compare the global variable directly with the expected status
+      if (_isCheckedIn == expectedStatus) {
+        setState(() {
+          _isProcessing = false; // Reset the processing flag
+          _recentlyCheckInDoc = null;
+          _recentlyCheckOutDoc = null;
+          expectedStatus = null;
+        });
+      } else {
+        print('Latest record status does not match the expected status');
+        // Optionally add a delay before the next check
+        // await Future.delayed(Duration(seconds: 5));
+      }
+ // }
+}
+
+
 
 Future<DocumentReference> _getLatestAttendanceDoc() async {
   try {
@@ -454,29 +532,47 @@ Future<bool> _getLastAttendanceType() async {
 
 @override
 Widget build(BuildContext context) {
-  return Scaffold(
-    appBar: AppBar(
-      title: Text('Attendance'),
-    ),
-    body: Stack(
-      fit: StackFit.expand,
-      children: <Widget>[
-        SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Date: $_currentDate',
-                  style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 10.0),
-                SizedBox(height: 10.0),
-                Container(
-                  height: 200.0,
-                  child: _currentLocation != null
-                      ? GoogleMap(
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Attendance'),
+        backgroundColor: Colors.blueAccent, // Customize app bar color
+        elevation: 0, // Remove app bar shadow
+      ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Text(
+                      'Date: $_currentDate',
+                      style: TextStyle(
+                        fontSize: 18.0,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    height: 200.0,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12.0),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.5),
+                          spreadRadius: 2,
+                          blurRadius: 5,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: _currentLocation != null
+                        ? GoogleMap(
                           myLocationEnabled: true,
                           myLocationButtonEnabled: true,
                           initialCameraPosition: _currentLocation != null
@@ -498,35 +594,90 @@ Widget build(BuildContext context) {
                                 }
                               : {},
                         )
-                      : Center(child: CircularProgressIndicator()),
-                ),
-                SizedBox(height: 20),
-                Text('Location: $_locationName'),
-                Text('Address: $_address'),
-                SizedBox(height: 10.0),
-                ElevatedButton(
-                  onPressed: _checkInOut,
-                  child: Text(_isCheckedIn ? 'Out' : 'Work'),
-                ),
-                if (_isProcessing) _buildLoadingInterface(),
-              ],
+                        : Center(child: CircularProgressIndicator()),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Location: $_locationName',
+                    style: TextStyle(
+                      fontSize: 16.0,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  Text(
+                    'Address: $_address',
+                    style: TextStyle(
+                      fontSize: 16.0,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: _checkInOut,
+                    child: Text(
+                      _isCheckedIn ? 'Check Out' : 'Check In',
+                      style: TextStyle(fontSize: 16.0),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      primary: _isCheckedIn ? Colors.red : Colors.green,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                      padding: EdgeInsets.symmetric(
+                        vertical: 12.0,
+                        horizontal: 24.0,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  // Add other widgets and components as needed
+                ],
+              ),
             ),
           ),
-        ),
-        if (_isProcessing) _buildDarkOverlay(),
+          if (_isProcessing && (initialButtonState == _isCheckedIn))
+            DarkOverlay(), // Your processing overlay widget
+        ],
+      ),
+    );
+  }
+
+Widget _buildDarkOverlay() {
+  bool _Error = false;
+  //Timer to handle the duration of the progress indicator
+  Timer(Duration(seconds: 10),(){
+    setState(){
+      _Error = true;
+    }
+  });
+  return Container(
+    color: Colors.black.withOpacity(0.5),
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        CircularProgressIndicator(),
+        SizedBox(height: 20), // Adjust the spacing as needed
+        if (_Error)
+            Text(
+              'Feature is currently unavailable.',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+              ),
+            ),
+          if (!_Error)
+            Text(
+              'Recording in progress...',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+              ),
+            ),
       ],
     ),
   );
 }
 
-Widget _buildDarkOverlay() {
-  return Container(
-    color: Colors.black.withOpacity(0.5),
-    child: Center(
-      child: CircularProgressIndicator(),
-    ),
-  );
-}
 
 Widget _buildLoadingInterface() {
   return IgnorePointer(
@@ -541,4 +692,88 @@ Widget _buildLoadingInterface() {
 }
 
 
+}
+
+class DarkOverlay extends StatefulWidget {
+  @override
+  _DarkOverlayState createState() => _DarkOverlayState();
+}
+
+class _DarkOverlayState extends State<DarkOverlay> {
+  bool _error = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Timer to handle the duration of the progress indicator
+    Timer(Duration(seconds: 10), () {
+      if (mounted) {
+        setState(() {
+          _error = true;
+        });
+      }
+    });
+  }
+
+  void _restartApp() {
+    // Your logic to restart the app
+    SystemChannels.platform.invokeMethod('SystemNavigator.pop');
+  }
+
+  void _leavePage() {
+    // Your logic to leave the current page
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.black.withOpacity(0.5),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(
+             valueColor: AlwaysStoppedAnimation<Color>(Colors.blue), // Customize color
+          ),
+          SizedBox(height: 20), // Adjust the spacing as needed
+          if (_error)
+            Column(
+              children: [
+                Text(
+                  'Feature is currently unavailable.',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                  ),
+                ),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: _restartApp,
+                  child: Text('Restart the App'),
+                  style: ElevatedButton.styleFrom(
+                    primary: Colors.red, // Change button color
+                  ),
+                ),
+                SizedBox(height: 10),
+                ElevatedButton(
+                  onPressed: _leavePage,
+                  child: Text('Leave the Page'),
+                  style: ElevatedButton.styleFrom(
+                    primary: Colors.blue, // Change button color
+                  ),
+                ),
+              ],
+            ),
+          if (!_error)
+            Text(
+              'Recording in progress...',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
