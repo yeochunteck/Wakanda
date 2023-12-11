@@ -5,6 +5,7 @@ import 'package:flutter_application_1/salary_page.dart';
 import 'package:flutter_application_1/login_page.dart';
 import 'package:flutter_application_1/profile_page.dart';
 import 'package:flutter_application_1/create_user_page.dart';
+import 'package:flutter_application_1/Apply_FullLeave_page.dart';
 
 class MainPage extends StatefulWidget {
   final String companyId;
@@ -116,14 +117,15 @@ class _MainPageState extends State<MainPage> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => SalaryPage()),
+                  MaterialPageRoute(
+                      builder: (context) => ApplyLeave(companyId: widget.companyId)),
                 );
               },
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.money),
+                  Icon(Icons.article),
                   SizedBox(width: 10),
-                  Text('Salary Page'),
+                  Text('Apply Leave'),
                 ],
               ),
             ),
