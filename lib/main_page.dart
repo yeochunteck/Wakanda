@@ -6,6 +6,7 @@ import 'package:flutter_application_1/login_page.dart';
 import 'package:flutter_application_1/profile_page.dart';
 import 'package:flutter_application_1/create_user_page.dart';
 import 'package:flutter_application_1/Apply_FullLeave_page.dart';
+import 'package:flutter_application_1/Announcement.dart';
 
 class MainPage extends StatefulWidget {
   final String companyId;
@@ -146,7 +147,22 @@ class _MainPageState extends State<MainPage> {
               ),
             ),
             const SizedBox(height: 20),
-            // Using ternary operator to conditionally render the 'Create New User' button
+           ElevatedButton(
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => AnnouncementPage(userPosition: widget.userPosition, companyId: widget.companyId,)),
+                );
+              },
+              child: const Row(
+                children: [
+                  Icon(Icons.logout),
+                  SizedBox(width: 10),
+                  Text('Announcement'),
+                ],
+              ),
+            ),  
+          // Using ternary operator to conditionally render the 'Create New User' button
           widget.userPosition == 'Manager'
               ? ElevatedButton(
                   onPressed: () {
