@@ -570,7 +570,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 controller: basicSalaryController,
                 keyboardType: TextInputType.phone,
                 inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}$')),
                 ],
                 validator: (value) {
                   if (value == null || value.isEmpty) {
