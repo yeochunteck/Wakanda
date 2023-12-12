@@ -4,6 +4,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_application_1/data/repositories/profile_repository.dart';
 import 'package:flutter_application_1/profile_page.dart';
 import 'package:flutter_application_1/edit_profile_page.dart';
+// import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:month_year_picker/month_year_picker.dart';
+import 'package:flutter_application_1/view_salary_page.dart';
+import 'package:intl/intl.dart';
 
 class SalaryPage extends StatefulWidget {
   @override
@@ -15,6 +19,7 @@ class SalaryPage extends StatefulWidget {
 
 class _SalaryPageState extends State<SalaryPage> {
   final logger = Logger();
+  DateTime? _selected = DateTime.now();
 
   // Define the TextEditingController
   TextEditingController monthYearController = TextEditingController();
@@ -65,14 +70,25 @@ class _SalaryPageState extends State<SalaryPage> {
         final Map<String, dynamic> salaryData =
             salaryDoc.data() as Map<String, dynamic>;
 
+        DateTime effectiveDate = salaryData['effectiveDate'].toDate();
+        // Change to UTC+8
+        effectiveDate = effectiveDate.add(const Duration(hours: 8));
+        logger.i('Effective Date: $effectiveDate');
+        logger.i('Current Basic Salary: ${salaryData['basicSalary']}');
+        logger.i('EPFNo: ${salaryData['epfNo']}');
+
+        logger.i('Selected Date: $selectedDate');
+        logger.i('Comparison Result: ${effectiveDate.isBefore(selectedDate)}');
+
         // Assuming 'effectiveDate' is a DateTime field in your salary document
         if (salaryData['effectiveDate'] != null &&
-            salaryData['effectiveDate'].toDate().isBefore(selectedDate)) {
+            effectiveDate.isBefore(selectedDate)) {
+          logger.i("salaryData['effectiveDate'] $salaryData['effectiveDate']");
           // This salary entry is effective within the selected month
           final num basicSalaryTemp = salaryData['basicSalary'] ?? 0.0;
           userData['basicSalary'] = basicSalaryTemp;
           // widget.basicSalary = basicSalaryTemp;
-
+          logger.i(userData['image']);
           // Add the user data with basic salary to the result list
           filteredUsers.add(userData);
           break; // Break the loop since we found the relevant salary entry
@@ -113,15 +129,16 @@ class _SalaryPageState extends State<SalaryPage> {
             child: GestureDetector(
               onTap: () async {
                 // Show date picker and update the text when a date is selected
-                DateTime? pickedDate = await showDatePicker(
+                DateTime? pickedDate = await showMonthYearPicker(
                   context: context,
-                  initialDate: DateTime.now(),
+                  initialDate: _selected ?? DateTime.now(),
                   firstDate: DateTime(1900),
                   lastDate: DateTime(2100),
                 );
 
                 if (pickedDate != null) {
                   setState(() {
+                    _selected = pickedDate;
                     monthYearController.text =
                         '${pickedDate.month}-${pickedDate.year}';
                   });
@@ -139,8 +156,9 @@ class _SalaryPageState extends State<SalaryPage> {
                     children: [
                       // Month-Year Text
                       Text(
-                        monthYearController
-                            .text, // Show selected month and year
+                        DateFormat('MMM yyyy').format(
+                            _selected!), // Format the selected month and year
+                        // monthYearController.text, // Show selected month and year
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -178,7 +196,8 @@ class _SalaryPageState extends State<SalaryPage> {
                     itemCount: snapshot.data!.length,
                     itemBuilder: (context, index) {
                       final userData = snapshot.data![index];
-                      return buildEmployeeRectangle(context, userData);
+                      return buildEmployeeRectangle(
+                          context, userData, _selected);
                     },
                   );
                 }
@@ -191,15 +210,16 @@ class _SalaryPageState extends State<SalaryPage> {
   }
 
   Widget buildEmployeeRectangle(
-      BuildContext context, Map<String, dynamic> userData) {
+      BuildContext context, Map<String, dynamic> userData, selected) {
+    logger.i("selected :  $selected");
     return GestureDetector(
       onTap: () async {
         // Navigate to the EditProfilePage with the selected companyId
         final updatedBasicSalary = await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) =>
-                EditProfilePage(companyId: userData['companyId']),
+            builder: (context) => ViewSalaryPage(
+                companyId: userData['companyId'], selectedMonth: selected),
           ),
         );
 
@@ -219,7 +239,7 @@ class _SalaryPageState extends State<SalaryPage> {
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
-          children: [
+          children: <Widget>[
             // Left side: Employee details
             Expanded(
               child: Column(
