@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/create_user_page.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:flutter/services.dart';
@@ -10,6 +11,9 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
 import 'dart:math';
+import 'package:open_file/open_file.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_application_1/main.dart';
 
 class ViewSalaryPage extends StatefulWidget {
   final String companyId;
@@ -49,6 +53,10 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
   num basicSalary = 0.0;
   String epfNo = '';
   String socsoNo = '';
+
+  String pdfPath = '';
+  String pdfName = '';
+  final Set<int> usedNotificationIds = {};
 
   @override
   void initState() {
@@ -91,9 +99,23 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
     }
   }
 
+  // Future<String> getUniqueFileName(String baseName, String extension) async {
+  //   final directory = await getExternalStorageDirectory();
+  //   final basePath = directory!.path;
+  //   int suffix = 0;
+
+  //   while (await File(
+  //           '$basePath/$baseName${suffix == 0 ? '' : '($suffix)'}.$extension')
+  //       .exists()) {
+  //     suffix++;
+  //   }
+
+  //   return '$basePath/$baseName${suffix == 0 ? '' : '($suffix)'}.$extension';
+  // }
+
   Future<String> getUniqueFileName(String baseName, String extension) async {
-    final directory = await getExternalStorageDirectory();
-    final basePath = directory!.path;
+    final directory = '/storage/emulated/0/Download';
+    final basePath = directory;
     int suffix = 0;
 
     while (await File(
@@ -102,36 +124,473 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
       suffix++;
     }
 
+    // pdfPath = '$basePath/$baseName${suffix == 0 ? '' : '($suffix)'}.$extension';
+    pdfName = '$baseName${suffix == 0 ? '' : '($suffix)'}.$extension';
     return '$basePath/$baseName${suffix == 0 ? '' : '($suffix)'}.$extension';
   }
 
-  Future<void> saveAsPDF() async {
+  // Future<void> showNotification() async {
+  //   const AndroidNotificationDetails androidPlatformChannelSpecifics =
+  //       AndroidNotificationDetails(
+  //     'your_channel_id',
+  //     'your_channel_name',
+  //     channelDescription: 'your_channel_description',
+  //     importance: Importance.max,
+  //     priority: Priority.high,
+  //   );
+  //   const NotificationDetails platformChannelSpecifics =
+  //       NotificationDetails(android: androidPlatformChannelSpecifics);
+
+  //   // Change 'pdf_path' to the actual path of your PDF file
+  //   // String pdfPath = 'pdf_path';
+
+  //   await flutterLocalNotificationsPlugin.show(
+  //     0,
+  //     '${name}_SalarySlip_${DateFormat('MMMMyyyy').format(widget.selectedMonth!)}.pdf Download Complete',
+  //     'Tap to open the PDF',
+  //     platformChannelSpecifics,
+  //     payload: pdfPath,
+  //   );
+  // }
+
+  // Future<bool> saveAsPDF() async {
+  //   final pdf = pw.Document();
+
+  //   // Use the font in the document
+  //   final font = await PdfGoogleFonts.nunitoExtraLight();
+
+  //   pdf.addPage(
+  //     pw.Page(
+  //       build: (pw.Context context) => pw.Center(
+  //         child: pw.Text('Hello World',
+  //             style: pw.TextStyle(font: font, fontSize: 40)),
+  //       ),
+  //     ),
+  //   );
+
+  //   try {
+  //     final downloadPath = '/storage/emulated/0/Download';
+
+  //     // Create a unique file name within the "Download" directory
+  //     // final uniqueFileName = await getUniqueFileName(
+  //     //     '${name}_SalarySlip_${DateFormat('MMMMyyyy').format(widget.selectedMonth!)}',
+  //     //     'pdf');
+  //     final uniqueFileName =
+  //         '$downloadPath/${name}_SalarySlip_${DateFormat('MMMMyyyy').format(widget.selectedMonth!)}.pdf';
+
+  //     // Create a File object with the unique PDF file name
+  //     final file = File(uniqueFileName);
+
+  //     // Write the PDF content to the file
+  //     await file.writeAsBytes(await pdf.save());
+
+  //     logger.i('PDF file path: ${file.path}');
+
+  //     // Open the file only if the download was successful
+  //     OpenFile.open(file.path);
+  //     // showNotification();
+
+  //     // TODO: Implement logic to handle the saved PDF file
+
+  //     return true; // Download successful
+  //   } catch (e) {
+  //     logger.e('Error saving PDF: $e');
+  //     return false; // Download failed
+  //   }
+  // }
+
+  Future<void> showNotification() async {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'your_channel_id',
+      'your_channel_name',
+      channelDescription: 'your_channel_description',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    // Change 'pdf_path' to the actual path of your PDF file
+    // String pdfPath = 'pdf_path';
+    final Set<int> usedNotificationIds = {};
+    Random random = Random();
+    int notificationId;
+
+    // Generate a unique notification ID
+    do {
+      notificationId = random.nextInt(999999);
+    } while (usedNotificationIds.contains(notificationId));
+
+    // Add the used ID to the set
+    usedNotificationIds.add(notificationId);
+
+    await flutterLocalNotificationsPlugin.show(
+      notificationId,
+      '$pdfName Download Complete',
+      'Tap to open the PDF',
+      platformChannelSpecifics,
+      payload: pdfPath,
+    );
+  }
+
+  Future<bool> saveAsPDF() async {
     final pdf = pw.Document();
 
     // Use the font in the document
     final font = await PdfGoogleFonts.nunitoExtraLight();
 
+    // pw.Row _buildInfoRow(String label, num value, {bool isInteger = false}) {
+    //   final pw.BorderSide borderSide = pw.BorderSide(
+    //     color: PdfColors.black, // You can customize the color
+    //     width: 1.0, // Adjust the border width as needed
+    //   );
+
+    //   return pw.Row(
+    //     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+    //     children: [
+    //       pw.Container(
+    //         decoration: pw.BoxDecoration(
+    //           border: pw.Border(bottom: borderSide),
+    //         ),
+    //         child: pw.Text(label, style: pw.TextStyle(fontSize: 14)),
+    //       ),
+    //       pw.Container(
+    //         decoration: pw.BoxDecoration(
+    //           border: pw.Border(bottom: borderSide),
+    //         ),
+    //         child: pw.Text(
+    //           'RM ${isInteger ? value.toInt() : value.toStringAsFixed(2)}',
+    //           style: pw.TextStyle(fontSize: 14),
+    //         ),
+    //       ),
+    //     ],
+    //   );
+    // }
+    // pw.Table _buildInfoTable(String label, num value,
+    //     {bool isInteger = false}) {
+    //   final pw.TableBorder border = pw.TableBorder.all(
+    //     color: PdfColors.grey, // Customize the color
+    //     width: 0.5, // Adjust the border width as needed
+    //   );
+
+    //   return pw.Table(
+    //     border: border,
+    //     children: [
+    //       pw.TableRow(
+    //         children: [
+    //           pw.Container(
+    //             width: 150,
+    //             padding: const pw.EdgeInsets.all(8),
+    //             child: pw.Text(label, style: pw.TextStyle(fontSize: 14)),
+    //           ),
+    //           pw.Container(
+    //             width: 150,
+    //             padding: const pw.EdgeInsets.all(8),
+    //             child: pw.Text(
+    //               'RM ${isInteger ? value.toInt() : value.toStringAsFixed(2)}',
+    //               style: pw.TextStyle(fontSize: 14),
+    //             ),
+    //           ),
+    //         ],
+    //       ),
+    //     ],
+    //   );
+    // }
+
+    pw.Table _buildInfoTable(String label, String value, bool alignRight) {
+      final pw.TableBorder border = pw.TableBorder.all(
+        color: PdfColors.grey, // Customize the color
+        width: 0.5, // Adjust the border width as needed
+      );
+
+      return pw.Table(
+        border: border,
+        children: [
+          pw.TableRow(
+            children: [
+              pw.Container(
+                width: 140,
+                padding: const pw.EdgeInsets.all(5),
+                child: pw.Text(label, style: pw.TextStyle(fontSize: 12)),
+              ),
+              pw.Container(
+                width: 360,
+                padding: const pw.EdgeInsets.all(5),
+                alignment: alignRight
+                    ? pw.Alignment.centerRight
+                    : pw.Alignment.centerLeft,
+                child: pw.Text(
+                  value,
+                  style: pw.TextStyle(fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    pw.Table _build4ColumnTable(
+        String label, num hour, num rate, String inputString, bool alignRight) {
+      final pw.TableBorder border = pw.TableBorder.all(
+        color: PdfColors.grey, // Customize the color
+        width: 0.5, // Adjust the border width as needed
+      );
+
+      return pw.Table(
+        border: border,
+        children: [
+          pw.TableRow(
+            children: [
+              pw.Container(
+                width: 140,
+                padding: const pw.EdgeInsets.all(5),
+                child: pw.Text(label, style: pw.TextStyle(fontSize: 12)),
+              ),
+              pw.Container(
+                width: 120,
+                padding: const pw.EdgeInsets.all(5),
+                alignment: alignRight
+                    ? pw.Alignment.centerRight
+                    : pw.Alignment.centerLeft,
+                child: pw.Text(
+                  hour.toStringAsFixed(2),
+                  style: pw.TextStyle(fontSize: 12),
+                ),
+              ),
+              pw.Container(
+                width: 120,
+                padding: const pw.EdgeInsets.all(5),
+                alignment: alignRight
+                    ? pw.Alignment.centerRight
+                    : pw.Alignment.centerLeft,
+                child: pw.Text(
+                  (inputString == "OT")
+                      ? (basicSalary / 20 / 8 * rate).toStringAsFixed(2)
+                      : (rate).toStringAsFixed(2),
+                  style: pw.TextStyle(fontSize: 12),
+                ),
+              ),
+              pw.Container(
+                width: 120,
+                padding: const pw.EdgeInsets.all(5),
+                alignment: alignRight
+                    ? pw.Alignment.centerRight
+                    : pw.Alignment.centerLeft,
+                child: pw.Text(
+                  (inputString == "OT")
+                      ? (hour * (basicSalary / 20 / 8 * rate))
+                          .toStringAsFixed(2)
+                      : (hour + rate).toStringAsFixed(2),
+                  style: pw.TextStyle(fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
     pdf.addPage(
       pw.Page(
-        build: (pw.Context context) => pw.Center(
-          child: pw.Text('Hello World',
-              style: pw.TextStyle(font: font, fontSize: 40)),
-        ),
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              // Header
+              pw.Container(
+                color: PdfColors.grey200, // Set your desired background color
+                child: pw.Row(
+                  children: [
+                    pw.Text(
+                      'Pay Slip for Period Ending',
+                      style: pw.TextStyle(
+                        fontWeight: pw.FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    pw.Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: pw.Text(
+                        ' ${DateFormat('MMMM yyyy').format(widget.selectedMonth!)} (Monthly)',
+                        style: pw.TextStyle(
+                          fontWeight: pw.FontWeight.bold,
+                          fontSize: 14,
+                          color: PdfColors.blue,
+                        ),
+                      ),
+                    ),
+                    pw.Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: pw.Text(
+                        ' (RM)',
+                        style: pw.TextStyle(
+                          fontWeight: pw.FontWeight.bold,
+                          fontSize: 14,
+                          color: PdfColors.black,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 10),
+
+              _buildInfoTable('CompanyID:', '${widget.companyId}', false),
+              _buildInfoTable('Name:', '$name', false),
+              _buildInfoTable('Payment Method:',
+                  '$selectedBank (Account: $accountNumber)', false),
+              // Content
+              pw.SizedBox(height: 15),
+              // pw.Text('Employee Details:',
+              //     style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 5),
+              _buildInfoTable('Basic Salary', '$basicSalary', true),
+
+              _buildInfoTable('Total Overtime', '5.0', true),
+
+              pw.Table(
+                border: pw.TableBorder.all(
+                  color: PdfColors.grey, // Customize the color
+                  width: 0.5, // Adjust the border width as needed
+                ),
+                children: [
+                  pw.TableRow(
+                    children: [
+                      pw.Container(
+                          width: 140,
+                          padding: const pw.EdgeInsets.all(5),
+                          child: pw.Text(
+                            'Description',
+                            style: pw.TextStyle(
+                              fontWeight: pw.FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          )),
+                      pw.Container(
+                        width: 120,
+                        padding: const pw.EdgeInsets.all(5),
+                        alignment: pw.Alignment.centerRight,
+                        child: pw.Text(
+                          'Hours',
+                          style: pw.TextStyle(
+                            fontWeight: pw.FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      pw.Container(
+                        width: 120,
+                        padding: const pw.EdgeInsets.all(5),
+                        alignment: pw.Alignment.centerRight,
+                        child: pw.Text(
+                          'HourlyPay',
+                          style: pw.TextStyle(
+                            fontWeight: pw.FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      pw.Container(
+                        width: 120,
+                        padding: const pw.EdgeInsets.all(5),
+                        alignment: pw.Alignment.centerRight,
+                        child: pw.Text(
+                          'Sub-Total',
+                          style: pw.TextStyle(
+                            fontWeight: pw.FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              _build4ColumnTable('[OT1.5]', 3, 1.5, 'OT', true),
+              _build4ColumnTable('[OT2.0]', 3, 2.0, 'OT', true),
+              _buildInfoTable('Medical Claim', '200.0', true),
+              _buildInfoTable('Meal Claim', '300.0', true),
+              _buildInfoTable('Total No Pay', '-100', true),
+              _buildInfoTable('Bonus', '5.0', true),
+              _buildInfoTable(
+                  'Statutory Contribution',
+                  '${calculateEPF('employer') + calculateEPF('employee') + calculateSOCSO('employer') + calculateSOCSO('employee') + (calculateEIS() * 2.0)}',
+                  true),
+              _buildInfoTable('Net Salary', '-100', true),
+              pw.SizedBox(height: 10),
+              pw.Text('Statutory Contribution:',
+                  style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 5),
+              _build4ColumnTable('EPF:', calculateEPF('employer'),
+                  calculateEPF('employee'), 'statutory', true),
+              _build4ColumnTable('SOCSO:', calculateSOCSO('employer'),
+                  calculateSOCSO('employee'), 'statutory', true),
+              _build4ColumnTable(
+                  'EIS:', calculateEIS(), calculateEIS(), 'statutory', true),
+              _build4ColumnTable(
+                  'Total:',
+                  calculateEPF('employer') +
+                      calculateSOCSO('employer') +
+                      calculateEIS(),
+                  calculateEPF('employee') +
+                      calculateSOCSO('employee') +
+                      calculateEIS(),
+                  'statutory',
+                  true),
+              // _buildInfoTable(
+              //     'EPF (Employee)', '${calculateEPF('employee')}', true),
+              // _buildInfoTable(
+              //     'EPF (Employer)', '${calculateEPF('employer')}', true),
+              // _buildInfoTable('EIS (Employee)', '${calculateEIS()}', true),
+              // _buildInfoTable(
+              //     'SOCSO (Employee)', '${calculateSOCSO('employee')}', true),
+              pw.SizedBox(height: 10),
+              // pw.Text(
+              //   'Total Deductions: ${calculateEPF('employer') + calculateEPF('employee') + calculateSOCSO('employer') + calculateSOCSO('employee') + (calculateEIS() * 2.0)} ',
+              //   style:
+              //       pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16),
+              // ),
+            ],
+          );
+        },
       ),
     );
 
-    // Get a unique file name
-    final uniqueFileName = await getUniqueFileName('example', 'pdf');
+    try {
+      // final downloadPath = '/storage/emulated/0/Download';
 
-    // Create a File object with the unique PDF file name
-    final file = File(uniqueFileName);
+      // Create a unique file name within the "Download" directory
+      final uniqueFileName = await getUniqueFileName(
+          '${name}_SalarySlip_${DateFormat('MMMMyyyy').format(widget.selectedMonth!)}',
+          'pdf');
+      // final uniqueFileName =
+      //     '$downloadPath/${name}_SalarySlip_${DateFormat('MMMMyyyy').format(widget.selectedMonth!)}.pdf';
 
-    // Write the PDF content to the file
-    await file.writeAsBytes(await pdf.save());
+      // Create a File object with the unique PDF file name
+      final file = File(uniqueFileName);
 
-    print('PDF file path: ${file.path}');
+      // Write the PDF content to the file
+      await file.writeAsBytes(await pdf.save());
 
-    // TODO: Implement logic to handle the saved PDF file
+      logger.i('PDF file path: ${file.path}');
+
+      pdfPath = file.path;
+      // Open the file only if the download was successful
+      // OpenFile.open(file.path);
+      showNotification();
+
+      // TODO: Implement logic to handle the saved PDF file
+
+      return true; // Download successful
+    } catch (e) {
+      logger.e('Error saving PDF: $e');
+      return false; // Download failed
+    }
   }
 
   // Future<void> _updateProfile() async {
