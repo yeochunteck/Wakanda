@@ -73,6 +73,76 @@ class ProfileRepository {
     }
   }
 
+  Future<Map<String, dynamic>> getPreviousUserData(
+      String companyId, DateTime effectiveDate) async {
+    try {
+      final QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('companyId', isEqualTo: companyId)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        final userData = querySnapshot.docs[0].data() as Map<String, dynamic>;
+
+        // Fetch the 'bankHistory' subcollection
+        final QuerySnapshot bankHistorySnapshot = await FirebaseFirestore
+            .instance
+            .collection('users')
+            .doc(companyId)
+            .collection('bankHistory')
+            .where('effectiveDate', isLessThanOrEqualTo: effectiveDate)
+            .orderBy('effectiveDate', descending: true)
+            .get();
+
+        // Check if there are documents in the 'bankHistory' subcollection
+        if (bankHistorySnapshot.docs.isNotEmpty) {
+          // Retrieve the data from the first document (most recent effectiveDate)
+          final Map<String, dynamic> latestBankHistory =
+              bankHistorySnapshot.docs[0].data() as Map<String, dynamic>;
+
+          final String bankName = latestBankHistory['bankName'] ?? '';
+          final String accountNumber = latestBankHistory['accountNumber'] ?? '';
+
+          userData['bankName'] = bankName;
+          userData['accountNumber'] = accountNumber;
+        }
+
+        // Fetch the 'salaryHistory' subcollection
+        final QuerySnapshot salaryHistorySnapshot = await FirebaseFirestore
+            .instance
+            .collection('users')
+            .doc(companyId)
+            .collection('salaryHistory')
+            .where('effectiveDate', isLessThanOrEqualTo: effectiveDate)
+            .orderBy('effectiveDate', descending: true)
+            .get();
+
+        // Check if there are documents in the 'salaryHistory' subcollection
+        if (salaryHistorySnapshot.docs.isNotEmpty) {
+          // Retrieve the data from the first document (most recent effectiveDate)
+          final Map<String, dynamic> latestSalaryHistory =
+              salaryHistorySnapshot.docs[0].data() as Map<String, dynamic>;
+
+          final num basicSalary = latestSalaryHistory['basicSalary'] ?? '';
+          final String epfNo = latestSalaryHistory['epfNo'] ?? '';
+          final String socsoNo = latestSalaryHistory['socsoNo'] ?? '';
+
+          userData['basicSalary'] = basicSalary;
+          userData['epfNo'] = epfNo;
+          userData['socsoNo'] = socsoNo;
+        }
+
+        return userData;
+      } else {
+        logger.w('User not found for companyId: $companyId');
+        return {};
+      }
+    } catch (e) {
+      logger.e('Error fetching user data: $e');
+      return {};
+    }
+  }
+
   // Future<Map<String, dynamic>> getUserData(String companyId) async {
   //   try {
   //     final DocumentSnapshot userDoc = await FirebaseFirestore.instance
