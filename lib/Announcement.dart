@@ -19,7 +19,17 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Announcement Page'),
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back,
+            color: Colors.black,
+          ),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
       ),
+      
       body: Column(
         children: [
           Row(
@@ -96,9 +106,15 @@ class AnnouncementList extends StatelessWidget {
           String title = data['title'];
           DateTime timestamp = data['timestamp'].toDate();
 
+          List<String> visibleTo = List<String>.from(data['visible_to'] ?? []);
+
           bool isSeen = data['seen_by_$companyId'] ?? false;
 
-          if ((category == 'unseen' && !isSeen) || (category == 'seen' && isSeen)) {
+          if (
+            ((category == 'unseen' && !isSeen) ||
+            (category == 'seen' && isSeen))&&
+            (visibleTo.contains(companyId))
+          ) {
             announcementWidgets.add(
               ListTile(
                 title: Text(title),
@@ -177,12 +193,66 @@ class _MakeAnnouncementPageState extends State<MakeAnnouncementPage> {
     String content = _contentController.text.trim();
     DateTime now = DateTime.now();
 
+  Future<int> getLatestAnnouncementNumber() async {
+    try {
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance.collection('announcements').get();
+
+      int latestNumber = 0;
+
+      for (QueryDocumentSnapshot document in querySnapshot.docs) {
+        String documentId = document.id;
+        if (documentId.startsWith('General_Announcement_')) {
+          // Extract the announcement number
+          int number = int.tryParse(documentId.split('_').last) ?? 0;
+          if (number > latestNumber) {
+            latestNumber = number;
+          }
+        }
+      }
+
+      return latestNumber;
+    } catch (e) {
+      print('Error fetching latest announcement number: $e');
+      return 0;
+    }
+  }
+
+    // Get the latest announcement number
+    int latestAnnouncementNumber = await getLatestAnnouncementNumber();
+
+    // Create a unique document ID for the announcement
+    String documentId = 'General_Announcement_${latestAnnouncementNumber + 1}';
+
+    Future<List<String>> getAllCompanyIds() async {
+      List<String> companyIds = [];
+
+      try {
+        QuerySnapshot querySnapshot = await FirebaseFirestore.instance.collection('users').get();
+
+        for (QueryDocumentSnapshot document in querySnapshot.docs) {
+          // Assuming each document in 'users' has a field 'companyId'
+          String companyId = document['companyId'];
+          if (companyId.isNotEmpty) {
+            companyIds.add(companyId);
+          }
+        }
+      } catch (e) {
+        print('Error fetching company IDs: $e');
+      }
+
+      return companyIds;
+    }
+
+    // Get all company IDs
+    List<String> allCompanyIds = await getAllCompanyIds();
+
     // Add the announcement to Firebase Firestore
-    await FirebaseFirestore.instance.collection('announcements').add({
+    await FirebaseFirestore.instance.collection('announcements').doc(documentId).set({
       'title': title,
       'content': content,
       'timestamp': now,
-      'seen_by_${widget.companyId}': false, // Set seen status for the current user
+      'seen_by_${widget.companyId}': false,
+      'visible_to': allCompanyIds, // Set the visible array to all companyId
     });
 
     // Close the current page and go back to the previous page
@@ -194,6 +264,13 @@ class _MakeAnnouncementPageState extends State<MakeAnnouncementPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Make Announcement'),
+        // Back button in the AppBar
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
