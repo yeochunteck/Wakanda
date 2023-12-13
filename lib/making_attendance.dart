@@ -9,6 +9,7 @@ import 'dart:developer' as developer;
 import 'package:logger/logger.dart';
 import 'dart:ui';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 
 
 final logger = Logger(
@@ -50,7 +51,24 @@ class _AttendancePageState extends State<AttendancePage> {
   bool? initialButtonState;
 
   
-  
+  Future<void> _postCheckInOutAnnouncement(String title, String content, String companyId) async {
+    try {
+      DateTime now = DateTime.now();
+
+      // Add the announcement to Firebase Firestore
+      await FirebaseFirestore.instance.collection('announcements').add({
+        'title': title,
+        'content': content,
+        'timestamp': now,
+        'seen_by_${widget.companyId}': false,
+        'visible_to': [companyId], // Set visible status for the current user
+      });
+
+    } catch (e) {
+      print("Error posting announcement: $e");
+      // Handle error if needed
+    }
+  }
   
   @override
   void initState() {
@@ -323,6 +341,11 @@ Future<void> _checkInOut() async {
       _recentlyCheckInDoc = checkInDocRef;
 
       latestAttendanceDoc = await _getLatestAttendanceDoc();
+
+      // Post check-in success announcement
+      String announcementTitle = 'Check-In Success';
+      String announcementContent = 'User ${widget.companyId} has successfully checked in at ${DateFormat('hh:mm:ss a').format(DateTime.now())}.';
+      await _postCheckInOutAnnouncement(announcementTitle, announcementContent,widget.companyId);
     } else {
       latestAttendanceDoc = await _getLatestAttendanceDoc();
 
@@ -334,6 +357,11 @@ Future<void> _checkInOut() async {
       });
 
       latestAttendanceDoc = await _getLatestAttendanceDoc();
+
+      // Post check-in success announcement
+      String announcementTitle = 'Check-Out Success';
+      String announcementContent = 'User ${widget.companyId} has successfully checked out at ${DateFormat('hh:mm:ss a').format(DateTime.now())}.';
+      await _postCheckInOutAnnouncement(announcementTitle, announcementContent,widget.companyId);
     }
 
     var latestDocId = latestAttendanceDoc.id;
