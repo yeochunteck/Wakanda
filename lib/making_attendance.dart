@@ -31,7 +31,15 @@ class AttendancePage extends StatefulWidget {
   _AttendancePageState createState() => _AttendancePageState();
 }
 
-class _AttendancePageState extends State<AttendancePage> {
+class _AttendancePageState extends State<AttendancePage>
+    with TickerProviderStateMixin {
+  late AnimationController _slideController;
+  late Animation<Offset> _slideAnimation;
+
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+
+    
   FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool _isCheckedIn = false;
   String _currentDate = '';
@@ -76,6 +84,31 @@ class _AttendancePageState extends State<AttendancePage> {
     super.initState();
     _getCurrentDate();
     _getCurrentTime();
+
+     _slideController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: Offset(1.0, 0.0),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        curve: Curves.easeInOut,
+        parent: _slideController,
+      ),
+    );
+
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _fadeAnimation = AlwaysStoppedAnimation<double>(1);
+
+    // Start the animations
+    _slideController.forward();
+    _fadeController.forward();
+
     _updateDateTime(); // Fetch and start updating date/time
     _requestLocationPermission();
     //_startListenerRefresh(); // Start the timer for listener refresh
@@ -305,6 +338,8 @@ void dispose() {
   _attendanceStream?.cancel(); // Cancel the stream subscription;
   _validateTimer?.cancel();
   _stopDateTimeUpdates(); // Stop the timer when the widget is disposed
+  _slideController.dispose();
+  _fadeController.dispose();
   // Revert database changes if the process is still ongoing when the user exits the page
   if(_isProcessing){
     _revertOrRemoveDocuments();
@@ -592,7 +627,10 @@ Future<bool> _getLastAttendanceType() async {
 Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Attendance'),
+        centerTitle: true, // this is all you ne
+        title: Text(
+        'Attendance',
+        ),
         backgroundColor: Colors.purpleAccent, // Customize app bar color
         elevation: 0, // Remove app bar shadow
       ),
@@ -605,10 +643,16 @@ Widget build(BuildContext context) {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  AnimatedSwitcher(
+                    duration: Duration(milliseconds: 500),
+                    child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children:[
-                      Column(
+                      FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: SlideTransition(
+                          position: _slideAnimation,
+                          child:Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children:[
                            Text(
@@ -623,11 +667,19 @@ Widget build(BuildContext context) {
                             Padding(
                               padding: const EdgeInsets.symmetric(vertical: 8.0),
                               child: Text(
+                              key: Key(_currentDate), // Needed for AnimatedSwitcher  
                               _currentDate,
                               style: TextStyle(
                                 fontSize: 18.0,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.black87,
+                                shadows: [
+                                  Shadow(
+                                    blurRadius: 4,
+                                    color: Colors.black.withOpacity(0.2),
+                                    offset: Offset(2, 2),
+                                  ),
+                                ],
                           ),
                         ),
                       )
@@ -644,24 +696,43 @@ Widget build(BuildContext context) {
                           ),
                         ),
                       ),*/
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children:[
-                            SizedBox(height: 16),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8.0),
-                              child: Text(
-                              _currentTime,
-                              style: TextStyle(
-                                fontSize: 18.0,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                          ),
-                        ),
+                        )
                       ),
-                        ]
+                      FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: SlideTransition(
+                          position: _slideAnimation,
+                          child:Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                              children:[
+                              SizedBox(height: 16),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                child: Text(
+                                _currentTime,
+                                key: Key(_currentDate), // Needed for AnimatedSwitcher
+                                style: TextStyle(
+                                  fontSize: 18.0,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                  shadows: [
+                                    Shadow(
+                                      blurRadius: 4,
+                                      color: Colors.black.withOpacity(0.2),
+                                      offset: Offset(2, 2),
+                                    ),
+                                  ],
+                                ),
+                                ),
+                              ),
+                            ]
                       )
+                        )
+                      )
+
+                      
                     ]
+                  )
                   ),
                   Container(
                     height: 200.0,
@@ -717,23 +788,31 @@ Widget build(BuildContext context) {
                     ),
                   ),
                   SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: _checkInOut,
-                    child: Text(
-                      _isCheckedIn ? 'Check Out' : 'Check In',
-                      style: TextStyle(fontSize: 16.0),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      primary: _isCheckedIn ? Colors.red : Colors.green,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.0),
+                  Center(
+                      child: SizedBox(
+                        width: 200.0,
+                        height: 200.0,
+                        child: ElevatedButton(
+                          onPressed: _checkInOut,
+                          child: Text(
+                            _isCheckedIn ? 'Check Out' : 'Check In',
+                            style: TextStyle(fontSize: 28.0),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            shape: CircleBorder(),
+                            padding: EdgeInsets.all(24.0),
+                            elevation: 5.0, // Add elevation for a shadow effect
+                            primary: _isCheckedIn ? Color.fromARGB(255, 150, 57, 57) : Color.fromARGB(255, 51, 147, 92) , // Transparent background
+                            onPrimary: _isCheckedIn ? Colors.white : Colors.white, // Text color
+                            shadowColor: Colors.black, // Shadow color
+                            side: BorderSide(
+                              width: 1.0, // Border width
+                              color: _isCheckedIn ? const Color.fromARGB(255, 241, 91, 80) : const Color.fromARGB(255, 73, 186, 77), // Border color
+                            ),
+                          ),
+                        ),
                       ),
-                      padding: EdgeInsets.symmetric(
-                        vertical: 12.0,
-                        horizontal: 24.0,
-                      ),
                     ),
-                  ),
                   SizedBox(height: 20),
                   // Add other widgets and components as needed
                 ],

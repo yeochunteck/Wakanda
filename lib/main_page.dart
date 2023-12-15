@@ -161,7 +161,8 @@ class _MainPageState extends State<MainPage> {
                   Text('Announcement'),
                 ],
               ),
-            ),  
+            ),
+            const SizedBox(height: 20),  
           // Using ternary operator to conditionally render the 'Create New User' button
           widget.userPosition == 'Manager'
               ? ElevatedButton(
