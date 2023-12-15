@@ -100,7 +100,7 @@ class _MainPageState extends State<MainPage> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                Navigator.pushReplacement(
+                Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const HomePage()),
                 );
@@ -149,7 +149,7 @@ class _MainPageState extends State<MainPage> {
             const SizedBox(height: 20),
            ElevatedButton(
               onPressed: () {
-                Navigator.pushReplacement(
+                Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => AnnouncementPage(userPosition: widget.userPosition, companyId: widget.companyId,)),
                 );
