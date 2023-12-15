@@ -9,7 +9,7 @@ import 'dart:developer' as developer;
 import 'package:logger/logger.dart';
 import 'dart:ui';
 import 'package:flutter/services.dart';
-
+import 'package:intl/intl.dart';
 
 final logger = Logger(
   printer: PrettyPrinter(
@@ -35,6 +35,7 @@ class _AttendancePageState extends State<AttendancePage> {
   FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool _isCheckedIn = false;
   String _currentDate = '';
+  String _currentTime = '';
   LatLng? _currentLocation; // Nullable type for current location
   GoogleMapController? _mapController;
   String _locationName = 'Unknown'; // Variable to store the location name
@@ -48,6 +49,7 @@ class _AttendancePageState extends State<AttendancePage> {
   DocumentSnapshot? _recentlyCheckOutDoc;
   bool? expectedStatus;
   bool? initialButtonState;
+  late Timer _dateTimeTimer;
 
   
   
@@ -56,6 +58,8 @@ class _AttendancePageState extends State<AttendancePage> {
   void initState() {
     super.initState();
     _getCurrentDate();
+    _getCurrentTime();
+    _updateDateTime(); // Fetch and start updating date/time
     _requestLocationPermission();
     //_startListenerRefresh(); // Start the timer for listener refresh
     _listenToAttendanceChanges();
@@ -147,10 +151,36 @@ void _stopListenerRefresh() {
 
 
 
-  Future<void> _getCurrentDate() async {
+Future<void> _getCurrentDate() async {
+  DateTime now = DateTime.now();
+  _currentDate = '${now.day}-${now.month}-${now.year}';
+}
+
+Future<void> _getCurrentTime() async {
+  // Method to fetch the current time
+  DateTime now = DateTime.now();
+  String formattedTime = DateFormat('hh:mm:ss').format(now);
+  setState(() {
+    _currentTime = formattedTime;
+  });
+}
+
+void _updateDateTime() {
+  // Fetch and update date/time every second
+  _dateTimeTimer = Timer.periodic(Duration(seconds: 1), (timer) {
     DateTime now = DateTime.now();
-    _currentDate = '${now.day}-${now.month}-${now.year}';
-  }
+    setState(() {
+      _currentDate = '${now.day}-${now.month}-${now.year}';
+      _currentTime = DateFormat('hh:mm:ss').format(now);
+    });
+  });
+}
+
+void _stopDateTimeUpdates() {
+  // Cancel the timer to stop updating date/time
+  _dateTimeTimer.cancel();
+}
+
 
   Future<void> _getCurrentLocation() async {
     try {
@@ -257,6 +287,7 @@ void dispose() {
   _stopListenerRefresh(); // Stop the timer when the widget is disposed
   _attendanceStream?.cancel(); // Cancel the stream subscription;
   _validateTimer?.cancel();
+  _stopDateTimeUpdates(); // Stop the timer when the widget is disposed
   // Revert database changes if the process is still ongoing when the user exits the page
   if(_isProcessing){
     _revertOrRemoveDocuments();
@@ -535,7 +566,7 @@ Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Attendance'),
-        backgroundColor: Colors.blueAccent, // Customize app bar color
+        backgroundColor: Colors.purpleAccent, // Customize app bar color
         elevation: 0, // Remove app bar shadow
       ),
       body: Stack(
@@ -547,16 +578,63 @@ Widget build(BuildContext context) {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Text(
-                      'Date: $_currentDate',
-                      style: TextStyle(
-                        fontSize: 18.0,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children:[
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children:[
+                           Text(
+                              'CURRENT',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                                letterSpacing: 2,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Text(
+                              _currentDate,
+                              style: TextStyle(
+                                fontSize: 18.0,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                          ),
+                        ),
+                      )
+                        ]
                       ),
-                    ),
+                      /*Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Text(
+                          'Date: $_currentDate',
+                          style: TextStyle(
+                            fontSize: 18.0,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),*/
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children:[
+                            SizedBox(height: 16),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Text(
+                              _currentTime,
+                              style: TextStyle(
+                                fontSize: 18.0,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                        ]
+                      )
+                    ]
                   ),
                   Container(
                     height: 200.0,
