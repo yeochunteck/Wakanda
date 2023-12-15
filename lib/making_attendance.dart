@@ -59,6 +59,8 @@ class _AttendancePageState extends State<AttendancePage>
   bool? initialButtonState;
   late Timer _dateTimeTimer;
 
+  bool _showCircle = false;
+
   
   Future<void> _postCheckInOutAnnouncement(String title, String content, String companyId) async {
     try {
@@ -370,6 +372,14 @@ Future<void> _checkInOut() async {
   try {
     // Set initial button state
     initialButtonState = _isCheckedIn;
+    _showCircle = true;
+
+    // Timer to hide the circle after 1 second
+    Timer(Duration(milliseconds: 100), () {
+      setState(() {
+        _showCircle = false;
+      });
+    });
     
     setState(() {
       _isProcessing = true; // Start the processing/loading indicator
@@ -649,55 +659,57 @@ Widget build(BuildContext context) {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children:[
                       FadeTransition(
-                        opacity: _fadeAnimation,
-                        child: SlideTransition(
-                          position: _slideAnimation,
-                          child:Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children:[
-                           Text(
-                              'CURRENT',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                                letterSpacing: 2,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8.0),
-                              child: Text(
-                              key: Key(_currentDate), // Needed for AnimatedSwitcher  
-                              _currentDate,
-                              style: TextStyle(
-                                fontSize: 18.0,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                                shadows: [
-                                  Shadow(
-                                    blurRadius: 4,
-                                    color: Colors.black.withOpacity(0.2),
-                                    offset: Offset(2, 2),
-                                  ),
-                                ],
-                          ),
-                        ),
-                      )
-                        ]
-                      ),
-                      /*Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0),
-                        child: Text(
-                          'Date: $_currentDate',
-                          style: TextStyle(
-                            fontSize: 18.0,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ),*/
-                        )
-                      ),
+  opacity: _fadeAnimation,
+  child: SlideTransition(
+    position: _slideAnimation,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            
+            SizedBox(width: 4),
+            Text(
+              'CURRENT',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+                letterSpacing: 2,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 4),
+        Row(
+          children: [
+            Icon(
+              Icons.calendar_today, // Calendar icon
+              color: Colors.grey,
+              size: 18,
+            ),
+            Text(
+              _currentDate,
+              key: Key(_currentDate), // Needed for AnimatedSwitcher
+              style: TextStyle(
+                fontSize: 18.0,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+                shadows: [
+                  Shadow(
+                    blurRadius: 4,
+                    color: Colors.black.withOpacity(0.2),
+                    offset: Offset(2, 2),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: 4),
+          ],
+        ),
+      ],
+    ),
+  ),
+),
                       FadeTransition(
                         opacity: _fadeAnimation,
                         child: SlideTransition(
@@ -706,27 +718,40 @@ Widget build(BuildContext context) {
                             crossAxisAlignment: CrossAxisAlignment.end,
                               children:[
                               SizedBox(height: 16),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                                child: Text(
-                                _currentTime,
-                                key: Key(_currentDate), // Needed for AnimatedSwitcher
-                                style: TextStyle(
-                                  fontSize: 18.0,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                  shadows: [
-                                    Shadow(
-                                      blurRadius: 4,
-                                      color: Colors.black.withOpacity(0.2),
-                                      offset: Offset(2, 2),
-                                    ),
-                                  ],
-                                ),
-                                ),
-                              ),
+                               Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+                               Icon(
+          Icons.access_time, // Time icon
+          color: Colors.grey,
+          size: 18,
+        ),
+        SizedBox(width: 4),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Text(
+            _currentTime,
+            key: Key(_currentDate), // Needed for AnimatedSwitcher
+            style: TextStyle(
+              fontSize: 18.0,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+              shadows: [
+                Shadow(
+                  blurRadius: 4,
+                  color: Colors.black.withOpacity(0.2),
+                  offset: Offset(2, 2),
+                ),
+              ],
+            ),
+          ),
+        ),
                             ]
+                            
                       )
+                      ],
+    ),
                         )
                       )
 
@@ -789,7 +814,23 @@ Widget build(BuildContext context) {
                   ),
                   SizedBox(height: 20),
                   Center(
-                      child: SizedBox(
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children:[
+                        //Transparent circle that appears briefly when the button is clicked
+                        AnimatedOpacity(
+                          opacity: _showCircle ?1.0:0.0,
+                          duration: Duration(milliseconds: 500),
+                          child: Container(
+                            width: 210.0,
+                            height: 210.0,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color:  _isCheckedIn ? Colors.red.withOpacity(0.5):Colors.green.withOpacity(0.5)
+                            ),
+                          ),
+                        ),
+                        SizedBox(
                         width: 200.0,
                         height: 200.0,
                         child: ElevatedButton(
@@ -812,6 +853,9 @@ Widget build(BuildContext context) {
                           ),
                         ),
                       ),
+                      ]
+                    )
+                      
                     ),
                   SizedBox(height: 20),
                   // Add other widgets and components as needed
