@@ -42,9 +42,11 @@ class _AttendancePageState extends State<AttendancePage>
   FirebaseFirestore _firestore = FirebaseFirestore.instance;
   DocumentReference? _recentlyCheckInDoc;
   DocumentSnapshot? _recentlyCheckOutDoc;
+  DocumentSnapshot? previousAttendanceDoc;
+  Map<String, dynamic>? previousAttendanceData;
   bool? expectedStatus;
-  bool? initialButtonState;
   //Control Flag
+  bool? initialButtonState;
   bool _isCheckedIn = false;
   //Current variable
   String _currentDate = '';
@@ -62,7 +64,7 @@ class _AttendancePageState extends State<AttendancePage>
   Timer? _validateTimer;
   late Timer _dateTimeTimer;
 //Personal
-Map<String, dynamic>? userData;
+  Map<String, dynamic>? userData;
 //Method
   //Personal
     Future<Map<String, dynamic>?> _getUserData() async {
@@ -87,6 +89,7 @@ Map<String, dynamic>? userData;
     });
   }  
 
+  //Announcement
   Future<void> _postCheckInOutAnnouncement(String title, String content, String companyId) async {
     try {
       DateTime now = DateTime.now();
@@ -107,7 +110,7 @@ Map<String, dynamic>? userData;
   }
   
 
-
+  //ListenToDatabase
   void _listenToAttendanceChanges() {
     _attendanceStream = FirebaseFirestore.instance
         .collection('Attendance')
@@ -130,11 +133,14 @@ Map<String, dynamic>? userData;
         });
         if (snapshot.docs.isNotEmpty) {
           DocumentSnapshot latestRecord = snapshot.docs.first;
+          previousAttendanceDoc = latestRecord;
 
           var documentId = latestRecord.id;
           logger.d('Document ID: $documentId');
           
           var data = latestRecord.data();
+          previousAttendanceData = data as Map<String, dynamic>;
+
           logger.i('=== Fields of the current latest record ===');
           if (data != null && data is Map<String, dynamic>) {
             data.forEach((key, value) {
@@ -179,52 +185,51 @@ Map<String, dynamic>? userData;
     );
   }
 
-void _startListenerRefresh() {
-  const refreshInterval = Duration(seconds: 30); // Refresh interval of 30 seconds (modify as needed)
+  void _startListenerRefresh() {
+    const refreshInterval = Duration(seconds: 30); // Refresh interval of 30 seconds (modify as needed)
 
-  _listenerTimer = Timer.periodic(refreshInterval, (timer) {
-    _attendanceStream?.cancel(); // Cancel the current listener
-    _listenToAttendanceChanges(); // Re-establish the listener
-  });
-}
-
-void _stopListenerRefresh() {
-  _listenerTimer?.cancel();
-}
-
-
-
-Future<void> _getCurrentDate() async {
-  DateTime now = DateTime.now();
-  _currentDate = '${now.day}-${now.month}-${now.year}';
-}
-
-Future<void> _getCurrentTime() async {
-  // Method to fetch the current time
-  DateTime now = DateTime.now();
-  String formattedTime = DateFormat('hh:mm:ss').format(now);
-  setState(() {
-    _currentTime = formattedTime;
-  });
-}
-
-void _updateDateTime() {
-  // Fetch and update date/time every second
-  _dateTimeTimer = Timer.periodic(Duration(seconds: 1), (timer) {
-    DateTime now = DateTime.now();
-    setState(() {
-      _currentDate = '${now.day}-${now.month}-${now.year}';
-      _currentTime = DateFormat('hh:mm:ss').format(now);
+    _listenerTimer = Timer.periodic(refreshInterval, (timer) {
+      _attendanceStream?.cancel(); // Cancel the current listener
+      _listenToAttendanceChanges(); // Re-establish the listener
     });
-  });
-}
+  }
 
-void _stopDateTimeUpdates() {
-  // Cancel the timer to stop updating date/time
-  _dateTimeTimer.cancel();
-}
+  void _stopListenerRefresh() {
+    _listenerTimer?.cancel();
+  }
 
+  //getCurrentDateTime
+  Future<void> _getCurrentDate() async {
+    DateTime now = DateTime.now();
+    _currentDate = '${now.day}-${now.month}-${now.year}';
+  }
 
+  Future<void> _getCurrentTime() async {
+    // Method to fetch the current time
+    DateTime now = DateTime.now();
+    String formattedTime = DateFormat('hh:mm:ss').format(now);
+    setState(() {
+      _currentTime = formattedTime;
+    });
+  }
+
+  void _updateDateTime() {
+    // Fetch and update date/time every second
+    _dateTimeTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+      DateTime now = DateTime.now();
+      setState(() {
+        _currentDate = '${now.day}-${now.month}-${now.year}';
+        _currentTime = DateFormat('hh:mm:ss').format(now);
+      });
+    });
+  }
+
+  void _stopDateTimeUpdates() {
+    // Cancel the timer to stop updating date/time
+    _dateTimeTimer.cancel();
+  }
+
+//getCurrentLocation
   Future<void> _getCurrentLocation() async {
     try {
       Position position = await Geolocator.getCurrentPosition(
@@ -255,6 +260,26 @@ void _stopDateTimeUpdates() {
     };
   }
 
+     void _onMapCreated(GoogleMapController controller) {
+    _mapController = controller;
+
+    _getCurrentLocation();
+    _startLocationUpdates();
+  }
+
+  void _startLocationUpdates() {
+    Geolocator.getPositionStream().listen((Position position) {
+      if (mounted) {
+        setState(() {
+          _currentLocation = LatLng(position.latitude, position.longitude);
+        });
+
+        _updateLocationDetails(position.latitude, position.longitude);
+      }
+    });
+  }
+
+//Permission
     void _showPermissionDeniedDialog() {
     showDialog(
       context: context,
@@ -293,24 +318,141 @@ void _stopDateTimeUpdates() {
     );
   }
 
-   void _onMapCreated(GoogleMapController controller) {
-    _mapController = controller;
+  Future<void> _updateLocationDetails(double latitude, double longitude) async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        latitude,
+        longitude,
+      );
 
-    _getCurrentLocation();
-    _startLocationUpdates();
+      setState(() {
+        _locationName = placemarks.first.name ?? 'Unknown';
+        _address = placemarks.first.street ?? 'Unknown';
+        // You can access other address details like locality, subLocality, etc. from the placemarks if needed
+      });
+    } catch (e) {
+      print("Error getting location details: $e");
+    }
   }
 
-void _startLocationUpdates() {
-  Geolocator.getPositionStream().listen((Position position) {
-    if (mounted) {
+//CheckInOut
+  Future<void> _checkInOut() async {
+    try {
+      // Set initial button state
+      initialButtonState = _isCheckedIn;
+      _showCircle = true;
+
+      // Timer to hide the circle after 1 second
+      Timer(Duration(milliseconds: 100), () {
+        setState(() {
+          _showCircle = false;
+        });
+      });
+      
       setState(() {
-        _currentLocation = LatLng(position.latitude, position.longitude);
+        _isProcessing = true; // Start the processing/loading indicator
       });
 
-      _updateLocationDetails(position.latitude, position.longitude);
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      GeoPoint geoPoint = GeoPoint(
+        position.latitude,
+        position.longitude,
+      );
+
+      String timeKey =
+          '${DateTime.now().hour}:${DateTime.now().minute}:${DateTime.now().second}';
+
+      bool isCheckIn = await _getLastAttendanceType();
+
+      DocumentReference latestAttendanceDoc;
+
+      if (!isCheckIn) {
+        final checkInDocRef = _firestore
+            .collection('Attendance')
+            .doc(widget.companyId)
+            .collection(_currentDate)
+            .doc();
+
+        await checkInDocRef.set({
+          'CheckInLocation': geoPoint,
+          'CheckInTime': timeKey,
+        });
+
+        _recentlyCheckInDoc = checkInDocRef;
+
+        latestAttendanceDoc = await _getLatestAttendanceDoc();
+
+        // Post check-in success announcement
+        String announcementTitle = 'Check-In Success';
+        String announcementContent = 'User ${widget.companyId} has successfully checked in at ${DateFormat('hh:mm:ss a').format(DateTime.now())}.';
+        await _postCheckInOutAnnouncement(announcementTitle, announcementContent,widget.companyId);
+      } else {
+        latestAttendanceDoc = await _getLatestAttendanceDoc();
+
+        _recentlyCheckOutDoc = await latestAttendanceDoc.get();
+
+        await latestAttendanceDoc.update({
+          'CheckOutLocation': geoPoint,
+          'CheckOutTime': timeKey,
+        });
+
+        latestAttendanceDoc = await _getLatestAttendanceDoc();
+
+        // Post check-in success announcement
+        String announcementTitle = 'Check-Out Success';
+        String announcementContent = 'User ${widget.companyId} has successfully checked out at ${DateFormat('hh:mm:ss a').format(DateTime.now())}.';
+        await _postCheckInOutAnnouncement(announcementTitle, announcementContent,widget.companyId);
+      }
+
+      var latestDocId = latestAttendanceDoc.id;
+      var latestDocData = (await latestAttendanceDoc.get()).data();
+      var metadata = (await latestAttendanceDoc.get()).metadata;
+
+      // Check metadata for source information
+      if (metadata.isFromCache) {
+        logger.d('Data retrieved from local cache');
+      } else {
+        logger.d('Data retrieved from server');
+      }
+
+      expectedStatus = !isCheckIn;
+      bool latestRecordStatus = !(latestDocData != null &&
+          latestDocData is Map<String, dynamic> &&
+          latestDocData.containsKey('CheckOutTime'));
+
+      if (latestRecordStatus != expectedStatus) {
+        setState(() {
+          _isProcessing = true;
+        });
+      } else {
+        if(_isCheckedIn != initialButtonState){
+          setState(() {
+          _isProcessing = false;
+          _recentlyCheckInDoc = null;
+          _recentlyCheckOutDoc = null;
+        });}
+        
+      }
+
+      // Stop the processing/loading indicator immediately if the button state changes
+      if (initialButtonState != _isCheckedIn) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
+    } catch (e) {
+      print("Error checking in/out: $e");
+      _revertOrRemoveDocuments(); // Revert or remove documents on error
+
+      // Stop the processing/loading indicator in case of an error
+      /*setState(() {
+        _isProcessing = false;
+      });*/
     }
-  });
-}
+  }
 
   @override
   void initState() {
@@ -347,6 +489,8 @@ void _startLocationUpdates() {
     _listenToAttendanceChanges();
   }
 
+  
+
   @override
   void dispose() {
     // Stop listening to position updates when the widget is disposed
@@ -365,142 +509,11 @@ void _startLocationUpdates() {
     super.dispose();
   }
 
-  Future<void> _updateLocationDetails(double latitude, double longitude) async {
-    try {
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        latitude,
-        longitude,
-      );
 
-      setState(() {
-        _locationName = placemarks.first.name ?? 'Unknown';
-        _address = placemarks.first.street ?? 'Unknown';
-        // You can access other address details like locality, subLocality, etc. from the placemarks if needed
-      });
-    } catch (e) {
-      print("Error getting location details: $e");
-    }
-  }
 
 
   
-Future<void> _checkInOut() async {
-  try {
-    // Set initial button state
-    initialButtonState = _isCheckedIn;
-    _showCircle = true;
 
-    // Timer to hide the circle after 1 second
-    Timer(Duration(milliseconds: 100), () {
-      setState(() {
-        _showCircle = false;
-      });
-    });
-    
-    setState(() {
-      _isProcessing = true; // Start the processing/loading indicator
-    });
-
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
-
-    GeoPoint geoPoint = GeoPoint(
-      position.latitude,
-      position.longitude,
-    );
-
-    String timeKey =
-        '${DateTime.now().hour}:${DateTime.now().minute}:${DateTime.now().second}';
-
-    bool isCheckIn = await _getLastAttendanceType();
-
-    DocumentReference latestAttendanceDoc;
-
-    if (!isCheckIn) {
-      final checkInDocRef = _firestore
-          .collection('Attendance')
-          .doc(widget.companyId)
-          .collection(_currentDate)
-          .doc();
-
-      await checkInDocRef.set({
-        'CheckInLocation': geoPoint,
-        'CheckInTime': timeKey,
-      });
-
-      _recentlyCheckInDoc = checkInDocRef;
-
-      latestAttendanceDoc = await _getLatestAttendanceDoc();
-
-      // Post check-in success announcement
-      String announcementTitle = 'Check-In Success';
-      String announcementContent = 'User ${widget.companyId} has successfully checked in at ${DateFormat('hh:mm:ss a').format(DateTime.now())}.';
-      await _postCheckInOutAnnouncement(announcementTitle, announcementContent,widget.companyId);
-    } else {
-      latestAttendanceDoc = await _getLatestAttendanceDoc();
-
-      _recentlyCheckOutDoc = await latestAttendanceDoc.get();
-
-      await latestAttendanceDoc.update({
-        'CheckOutLocation': geoPoint,
-        'CheckOutTime': timeKey,
-      });
-
-      latestAttendanceDoc = await _getLatestAttendanceDoc();
-
-      // Post check-in success announcement
-      String announcementTitle = 'Check-Out Success';
-      String announcementContent = 'User ${widget.companyId} has successfully checked out at ${DateFormat('hh:mm:ss a').format(DateTime.now())}.';
-      await _postCheckInOutAnnouncement(announcementTitle, announcementContent,widget.companyId);
-    }
-
-    var latestDocId = latestAttendanceDoc.id;
-    var latestDocData = (await latestAttendanceDoc.get()).data();
-    var metadata = (await latestAttendanceDoc.get()).metadata;
-
-    // Check metadata for source information
-    if (metadata.isFromCache) {
-      logger.d('Data retrieved from local cache');
-    } else {
-      logger.d('Data retrieved from server');
-    }
-
-    expectedStatus = !isCheckIn;
-    bool latestRecordStatus = !(latestDocData != null &&
-        latestDocData is Map<String, dynamic> &&
-        latestDocData.containsKey('CheckOutTime'));
-
-    if (latestRecordStatus != expectedStatus) {
-      setState(() {
-        _isProcessing = true;
-      });
-    } else {
-      if(_isCheckedIn != initialButtonState){
-        setState(() {
-        _isProcessing = false;
-        _recentlyCheckInDoc = null;
-        _recentlyCheckOutDoc = null;
-      });}
-      
-    }
-
-    // Stop the processing/loading indicator immediately if the button state changes
-    if (initialButtonState != _isCheckedIn) {
-      setState(() {
-        _isProcessing = false;
-      });
-    }
-  } catch (e) {
-    print("Error checking in/out: $e");
-    _revertOrRemoveDocuments(); // Revert or remove documents on error
-
-    // Stop the processing/loading indicator in case of an error
-    /*setState(() {
-      _isProcessing = false;
-    });*/
-  }
-}
 
 
  void _revertOrRemoveDocuments() async {
@@ -956,6 +969,53 @@ Widget _buildEmployeeRectangle(BuildContext context) {
                   ),
                 ),
               ),
+              SizedBox(height: 10), // Spacer
+              // Gray round board with user's name
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[300], // Gray color
+                  borderRadius: BorderRadius.circular(10), // Rounded corners
+                ),
+                padding: EdgeInsets.all(10), // Padding around the text
+                child: Text(
+                  userData!['name']!, // Assuming 'name' exists in userData
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+Column(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: previousAttendanceData != null
+      ? [
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: 5),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Check-in: ${previousAttendanceData!['CheckInTime']}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.black,
+                  ),
+                ),
+                Text(
+                  'Check-out: ${previousAttendanceData!['CheckOutTime']}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.black,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ]
+      : [Text('No previous attendance data')],
+)
+,
             ],
           ),
         );

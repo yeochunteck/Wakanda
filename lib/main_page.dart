@@ -119,7 +119,7 @@ class _MainPageState extends State<MainPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => ApplyLeave(companyId: widget.companyId)),
+                      builder: (context) => ApplyLeave(companyId: widget.companyId,userPosition: widget.userPosition)),
                 );
               },
               child: Row(

@@ -5,8 +5,9 @@ import 'package:flutter_application_1/Apply_FullLeave_page.dart';
 
 class HalfDayLeave extends StatelessWidget {
   final String companyId;
+  final String userPosition;
 
-  HalfDayLeave({Key? key, required this.companyId}) : super(key: key);
+  HalfDayLeave({Key? key, required this.companyId, required this.userPosition}) : super(key: key);
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -102,7 +103,7 @@ class HalfDayLeave extends StatelessWidget {
                 if (index == 0) {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => ApplyLeave(companyId: companyId,)),
+                    MaterialPageRoute(builder: (context) => ApplyLeave(companyId: companyId,userPosition: userPosition)),
                   );
                 }
               },
