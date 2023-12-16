@@ -33,35 +33,60 @@ class AttendancePage extends StatefulWidget {
 
 class _AttendancePageState extends State<AttendancePage>
     with TickerProviderStateMixin {
+  //Animation controller
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
-
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
-
-    
+  //Firebase     
   FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  bool _isCheckedIn = false;
-  String _currentDate = '';
-  String _currentTime = '';
-  LatLng? _currentLocation; // Nullable type for current location
-  GoogleMapController? _mapController;
-  String _locationName = 'Unknown'; // Variable to store the location name
-  String _address = 'Unknown';
-  StreamSubscription <QuerySnapshot>? _attendanceStream;
-  Timer? _listenerTimer;
-  Timer? _validateTimer;
-  bool _isProcessing = false;
-  // Variables to track the documents for revert/removal
   DocumentReference? _recentlyCheckInDoc;
   DocumentSnapshot? _recentlyCheckOutDoc;
   bool? expectedStatus;
   bool? initialButtonState;
-  late Timer _dateTimeTimer;
-
+  //Control Flag
+  bool _isCheckedIn = false;
+  //Current variable
+  String _currentDate = '';
+  String _currentTime = '';
+  bool _isProcessing = false;
   bool _showCircle = false;
+    //Location
+  LatLng? _currentLocation; // Nullable type for current location
+  GoogleMapController? _mapController;
+  String _locationName = 'Unknown'; // Variable to store the location name
+  String _address = 'Unknown';
+  //Update
+  StreamSubscription <QuerySnapshot>? _attendanceStream;
+  Timer? _listenerTimer;
+  Timer? _validateTimer;
+  late Timer _dateTimeTimer;
+//Personal
+Map<String, dynamic>? userData;
+//Method
+  //Personal
+    Future<Map<String, dynamic>?> _getUserData() async {
+    final docSnapshot = await _firestore
+      .collection('users')
+      .doc(widget.companyId)
+      .get();
 
-  
+    if (docSnapshot.exists) {
+      final data = docSnapshot.data();
+      return data;
+    }
+    
+    return null; // Return null if data doesn't exist or isn't in the expected format
+  }
+
+  Future<void> _fetchUserData() async {
+    // Fetch user data asynchronously
+    final data = await _getUserData(); // Replace this with your data fetching logic
+    setState(() {
+      userData = data;
+    });
+  }  
+
   Future<void> _postCheckInOutAnnouncement(String title, String content, String companyId) async {
     try {
       DateTime now = DateTime.now();
@@ -81,112 +106,78 @@ class _AttendancePageState extends State<AttendancePage>
     }
   }
   
-  @override
-  void initState() {
-    super.initState();
-    _getCurrentDate();
-    _getCurrentTime();
 
-     _slideController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    _slideAnimation = Tween<Offset>(
-      begin: Offset(1.0, 0.0),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        curve: Curves.easeInOut,
-        parent: _slideController,
-      ),
-    );
 
-    _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    _fadeAnimation = AlwaysStoppedAnimation<double>(1);
+  void _listenToAttendanceChanges() {
+    _attendanceStream = FirebaseFirestore.instance
+        .collection('Attendance')
+        .doc(widget.companyId)
+        .collection(_currentDate)
+        .orderBy('CheckInTime', descending: true)
+        .limit(1)
+        .snapshots(includeMetadataChanges: true)
+        .listen((QuerySnapshot snapshot) {
+      try{
+        snapshot.docChanges.forEach((change) {
+          var metadata = change.doc.metadata;
+          if (metadata.hasPendingWrites) {
+            print('Data came frFom the local cache');
+          } else {
+            print('Data came from the server');
+          }
 
-    // Start the animations
-    _slideController.forward();
-    _fadeController.forward();
-
-    _updateDateTime(); // Fetch and start updating date/time
-    _requestLocationPermission();
-    //_startListenerRefresh(); // Start the timer for listener refresh
-    _listenToAttendanceChanges();
-  }
-
-void _listenToAttendanceChanges() {
-  _attendanceStream = FirebaseFirestore.instance
-      .collection('Attendance')
-      .doc(widget.companyId)
-      .collection(_currentDate)
-      .orderBy('CheckInTime', descending: true)
-      .limit(1)
-      .snapshots(includeMetadataChanges: true)
-      .listen((QuerySnapshot snapshot) {
-    try{
-      snapshot.docChanges.forEach((change) {
-        var metadata = change.doc.metadata;
-        if (metadata.hasPendingWrites) {
-          print('Data came frFom the local cache');
-        } else {
-          print('Data came from the server');
-        }
-
-    // Handle other changes in the snapshot as needed
-      });
-      if (snapshot.docs.isNotEmpty) {
-        DocumentSnapshot latestRecord = snapshot.docs.first;
-
-        var documentId = latestRecord.id;
-        logger.d('Document ID: $documentId');
-        
-        var data = latestRecord.data();
-        logger.i('=== Fields of the current latest record ===');
-        if (data != null && data is Map<String, dynamic>) {
-          data.forEach((key, value) {
-            logger.i('$key: $value'); // Log fields of the latest record
-          });
-        } else {
-          logger.i('No data available in the latest record');
-        }
-
-        if (data != null &&
-            data is Map<String, dynamic> &&
-            data.containsKey('CheckOutTime')) {
-          setState(() {
-            _isCheckedIn = false;
-          });
-          logger.i('User status: Checked OUT'); // Indicate that the user is checked out
-        } else {
-          setState(() {
-            _isCheckedIn = true;
-          });
-          logger.i('User status: Checked IN'); // Indicate that the user is checked in
-        }
-
-        logger.i('Is checked in? $_isCheckedIn'); // Log the value of _isCheckedIn
-      } else {
-        // Collection or document doesn't exist
-        setState(() {
-          _isCheckedIn = false; // Handle default state when no data is available
+      // Handle other changes in the snapshot as needed
         });
-        logger.i('No attendance record found'); // Indicate that no record exists
+        if (snapshot.docs.isNotEmpty) {
+          DocumentSnapshot latestRecord = snapshot.docs.first;
+
+          var documentId = latestRecord.id;
+          logger.d('Document ID: $documentId');
+          
+          var data = latestRecord.data();
+          logger.i('=== Fields of the current latest record ===');
+          if (data != null && data is Map<String, dynamic>) {
+            data.forEach((key, value) {
+              logger.i('$key: $value'); // Log fields of the latest record
+            });
+          } else {
+            logger.i('No data available in the latest record');
+          }
+
+          if (data != null &&
+              data is Map<String, dynamic> &&
+              data.containsKey('CheckOutTime')) {
+            setState(() {
+              _isCheckedIn = false;
+            });
+            logger.i('User status: Checked OUT'); // Indicate that the user is checked out
+          } else {
+            setState(() {
+              _isCheckedIn = true;
+            });
+            logger.i('User status: Checked IN'); // Indicate that the user is checked in
+          }
+
+          logger.i('Is checked in? $_isCheckedIn'); // Log the value of _isCheckedIn
+        } else {
+          // Collection or document doesn't exist
+          setState(() {
+            _isCheckedIn = false; // Handle default state when no data is available
+          });
+          logger.i('No attendance record found'); // Indicate that no record exists
+        }
+        if (expectedStatus != null){
+          _checkLatestRecordStatus(expectedStatus: expectedStatus);
+        }
+      }catch(e){
+        logger.e('Error listenining to attendance changes: $e');
       }
-      if (expectedStatus != null){
-        _checkLatestRecordStatus(expectedStatus: expectedStatus);
-      }
-    }catch(e){
-      logger.e('Error listenining to attendance changes: $e');
+    },
+    onError: (error){
+      logger.e('Error fetching user data: $error'); // Error level log for errors
     }
-  },
-  onError: (error){
-    logger.e('Error fetching user data: $error'); // Error level log for errors
+    );
   }
-  );
-}
 
 void _startListenerRefresh() {
   const refreshInterval = Duration(seconds: 30); // Refresh interval of 30 seconds (modify as needed)
@@ -241,16 +232,6 @@ void _stopDateTimeUpdates() {
       setState(() {
         _currentLocation = LatLng(position.latitude, position.longitude);
       });
-
-       /*// Perform reverse geocoding to get location name
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
-
-      setState(() {
-        _locationName = placemarks.first.name ?? 'Unknown'; // Update location name
-      });*/
 
       _updateLocationDetails(position.latitude, position.longitude);
 
@@ -332,22 +313,57 @@ void _startLocationUpdates() {
 }
 
   @override
-void dispose() {
-  // Stop listening to position updates when the widget is disposed
-  // This prevents calling setState() on a disposed widget
-  Geolocator.getPositionStream().listen((Position position) {}).cancel();
-  _stopListenerRefresh(); // Stop the timer when the widget is disposed
-  _attendanceStream?.cancel(); // Cancel the stream subscription;
-  _validateTimer?.cancel();
-  _stopDateTimeUpdates(); // Stop the timer when the widget is disposed
-  _slideController.dispose();
-  _fadeController.dispose();
-  // Revert database changes if the process is still ongoing when the user exits the page
-  if(_isProcessing){
-    _revertOrRemoveDocuments();
+  void initState() {
+    super.initState();
+    //Personal
+    _fetchUserData();
+    //Current
+    _getCurrentDate();
+    _getCurrentTime();
+    //Animation
+     _slideController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: Offset(1.0, 0.0),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        curve: Curves.easeInOut,
+        parent: _slideController,
+      ),
+    );
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _fadeAnimation = AlwaysStoppedAnimation<double>(1);
+    // Start the animations
+    _slideController.forward();
+    _fadeController.forward();
+    _updateDateTime(); // Fetch and start updating date/time
+    _requestLocationPermission();//LocationPermission
+    _listenToAttendanceChanges();
   }
-  super.dispose();
-}
+
+  @override
+  void dispose() {
+    // Stop listening to position updates when the widget is disposed
+    // This prevents calling setState() on a disposed widget
+    Geolocator.getPositionStream().listen((Position position) {}).cancel();
+    _stopListenerRefresh(); // Stop the timer when the widget is disposed
+    _attendanceStream?.cancel(); // Cancel the stream subscription;
+    _validateTimer?.cancel();
+    _stopDateTimeUpdates(); // Stop the timer when the widget is disposed
+    _slideController.dispose();
+    _fadeController.dispose();
+    // Revert database changes if the process is still ongoing when the user exits the page
+    if(_isProcessing){
+      _revertOrRemoveDocuments();
+    }
+    super.dispose();
+  }
 
   Future<void> _updateLocationDetails(double latitude, double longitude) async {
     try {
@@ -644,121 +660,117 @@ Widget build(BuildContext context) {
         backgroundColor: Colors.purpleAccent, // Customize app bar color
         elevation: 0, // Remove app bar shadow
       ),
-      body: Stack(
-        fit: StackFit.expand,
-        children: <Widget>[
-          SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AnimatedSwitcher(
-                    duration: Duration(milliseconds: 500),
-                    child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children:[
-                      FadeTransition(
-  opacity: _fadeAnimation,
-  child: SlideTransition(
-    position: _slideAnimation,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            
-            SizedBox(width: 4),
-            Text(
-              'CURRENT',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-                letterSpacing: 2,
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 4),
-        Row(
-          children: [
-            Icon(
-              Icons.calendar_today, // Calendar icon
-              color: Colors.grey,
-              size: 18,
-            ),
-            Text(
-              _currentDate,
-              key: Key(_currentDate), // Needed for AnimatedSwitcher
-              style: TextStyle(
-                fontSize: 18.0,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-                shadows: [
-                  Shadow(
-                    blurRadius: 4,
-                    color: Colors.black.withOpacity(0.2),
-                    offset: Offset(2, 2),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(width: 4),
-          ],
-        ),
-      ],
-    ),
-  ),
-),
-                      FadeTransition(
-                        opacity: _fadeAnimation,
-                        child: SlideTransition(
-                          position: _slideAnimation,
-                          child:Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                              children:[
-                              SizedBox(height: 16),
-                               Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-                               Icon(
-          Icons.access_time, // Time icon
-          color: Colors.grey,
-          size: 18,
-        ),
-        SizedBox(width: 4),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Text(
-            _currentTime,
-            key: Key(_currentDate), // Needed for AnimatedSwitcher
-            style: TextStyle(
-              fontSize: 18.0,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-              shadows: [
-                Shadow(
-                  blurRadius: 4,
-                  color: Colors.black.withOpacity(0.2),
-                  offset: Offset(2, 2),
-                ),
-              ],
-            ),
-          ),
-        ),
-                            ]
-                            
+        body: Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AnimatedSwitcher(
+                        duration: Duration(milliseconds: 500),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children:[
+                            FadeTransition(
+                              opacity: _fadeAnimation,
+                              child: SlideTransition(
+                              position: _slideAnimation,
+                              child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            SizedBox(width: 4),
+                                            Text(
+                                              'CURRENT',
+                                              style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey,
+                                              letterSpacing: 2,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        SizedBox(height: 4),
+                                        Row(
+                                          children:[
+                                            Icon(
+                                              Icons.calendar_today, // Calendar icon
+                                              color: Colors.grey,
+                                              size: 18,
+                                            ),
+                                            Text(
+                                              _currentDate,
+                                              key: Key(_currentDate), // Needed for AnimatedSwitcher
+                                              style: TextStyle(
+                                                fontSize: 18.0,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.black87,
+                                                shadows: [
+                                                  Shadow(
+                                                    blurRadius: 4,
+                                                    color: Colors.black.withOpacity(0.2),
+                                                    offset: Offset(2, 2),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            SizedBox(width: 4),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                            ),
+                                              FadeTransition(
+                          opacity: _fadeAnimation,
+                          child: SlideTransition(
+                            position: _slideAnimation,
+                            child:Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                                children:[
+                                  SizedBox(height: 16),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.access_time, // Time icon
+                                        color: Colors.grey,
+                                        size: 18,
+                                      ),
+                                      SizedBox(width: 4),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                        child: Text(
+                                          _currentTime,
+                                          key: Key(_currentDate), // Needed for AnimatedSwitcher
+                                          style: TextStyle(
+                                            fontSize: 18.0,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black87,
+                                            shadows: [
+                                              Shadow(
+                                                blurRadius: 4,
+                                                color: Colors.black.withOpacity(0.2),
+                                                offset: Offset(2, 2),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ]   
+                                  )
+                                ],
+                              ),
+                            )
+                          )
+                        ]
                       )
-                      ],
-    ),
-                        )
-                      )
-
-                      
-                    ]
-                  )
-                  ),
+                    ),
                   Container(
                     height: 200.0,
                     decoration: BoxDecoration(
@@ -773,29 +785,29 @@ Widget build(BuildContext context) {
                       ],
                     ),
                     child: _currentLocation != null
-                        ? GoogleMap(
-                          myLocationEnabled: true,
-                          myLocationButtonEnabled: true,
-                          initialCameraPosition: _currentLocation != null
-                              ? CameraPosition(
-                                  target: _currentLocation!,
-                                  zoom: 15.0,
-                                )
-                              : CameraPosition(
-                                  target: LatLng(0.0, 0.0),
-                                  zoom: 1.0,
-                                ),
-                          onMapCreated: _onMapCreated,
-                          markers: _currentLocation != null
-                              ? {
-                                  Marker(
-                                    markerId: MarkerId('currentLocation'),
-                                    position: _currentLocation!,
+                              ? GoogleMap(
+                                myLocationEnabled: true,
+                                myLocationButtonEnabled: true,
+                                initialCameraPosition: _currentLocation != null
+                                  ? CameraPosition(
+                                      target: _currentLocation!,
+                                      zoom: 15.0,
+                                  )
+                                  : CameraPosition(
+                                      target: LatLng(0.0, 0.0),
+                                      zoom: 1.0,
                                   ),
-                                }
-                              : {},
-                        )
-                        : Center(child: CircularProgressIndicator()),
+                                onMapCreated: _onMapCreated,
+                                markers: _currentLocation != null
+                                  ? {
+                                    Marker(
+                                      markerId: MarkerId('currentLocation'),
+                                      position: _currentLocation!,
+                                    ),
+                                  }
+                                  : {},
+                                )
+                              : Center(child: CircularProgressIndicator()),
                   ),
                   SizedBox(height: 20),
                   Text(
@@ -813,6 +825,9 @@ Widget build(BuildContext context) {
                     ),
                   ),
                   SizedBox(height: 20),
+                  userData != null?
+                    _buildEmployeeRectangle(context):
+                    CircularProgressIndicator(),
                   Center(
                     child: Stack(
                       alignment: Alignment.center,
@@ -859,7 +874,7 @@ Widget build(BuildContext context) {
                     ),
                   SizedBox(height: 20),
                   // Add other widgets and components as needed
-                ],
+                ],//Column Children
               ),
             ),
           ),
@@ -905,6 +920,48 @@ Widget _buildDarkOverlay() {
     ),
   );
 }
+
+Widget _buildEmployeeRectangle(BuildContext context) {
+        return Center(
+          child: Column(
+            children: [
+              CircleAvatar(
+                radius: 50,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(50),
+                  child: Image.network(
+                    userData!['image'],
+                    width: 100,
+                    height: 100,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(
+                            Icons.person,
+                            size: 50,
+                            color: Colors.grey,
+                          ),
+                          Text(
+                            'No Image',
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+
 
 
 Widget _buildLoadingInterface() {
