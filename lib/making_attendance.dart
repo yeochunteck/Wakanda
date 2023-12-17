@@ -44,6 +44,7 @@ class _AttendancePageState extends State<AttendancePage>
   DocumentSnapshot? _recentlyCheckOutDoc;
   DocumentSnapshot? previousAttendanceDoc;
   Map<String, dynamic>? previousAttendanceData;
+  List<Map<String,dynamic>>? sortedAttendanceDocData;
   bool? expectedStatus;
   //Control Flag
   bool? initialButtonState;
@@ -117,7 +118,6 @@ class _AttendancePageState extends State<AttendancePage>
         .doc(widget.companyId)
         .collection(_currentDate)
         .orderBy('CheckInTime', descending: true)
-        .limit(1)
         .snapshots(includeMetadataChanges: true)
         .listen((QuerySnapshot snapshot) {
       try{
@@ -134,7 +134,12 @@ class _AttendancePageState extends State<AttendancePage>
         if (snapshot.docs.isNotEmpty) {
           DocumentSnapshot latestRecord = snapshot.docs.first;
           previousAttendanceDoc = latestRecord;
-
+          //List<QueryDocumentSnapshot> sortedAttendanceDoc = snapshot.docs;
+          sortedAttendanceDocData = snapshot.docs
+          .map((doc)=>doc.data() as Map<String,dynamic>)
+          .toList() ; 
+          
+          
           var documentId = latestRecord.id;
           logger.d('Document ID: $documentId');
           
@@ -1049,53 +1054,67 @@ Widget buildAttendanceTable(Map<String, dynamic>? attendanceData) {
                 ],
               ),
             ),
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.5),
-                    spreadRadius: 2,
-                    blurRadius: 5,
-                    offset: Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Table(
-                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                columnWidths: const {
-                  0: FlexColumnWidth(1),
-                  1: FlexColumnWidth(1),
-                },
-                border: TableBorder.all(color: Colors.transparent),
-                children: [
-                  TableRow(
-                    children: [
-                      buildTableCheckInCell(
-                        '${attendanceData!['CheckInTime']}',
-                        Colors.white,
-                        Color.fromARGB(255, 87, 178, 118),
-                      ),
-                      buildTableCheckOutCell(
-                        '${attendanceData['CheckOutTime']}',
-                        Colors.white,
-                        Color.fromARGB(255, 183, 90, 97),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+           Container(
+  decoration: BoxDecoration(
+    borderRadius: BorderRadius.circular(12),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.grey.withOpacity(0.5),
+        spreadRadius: 2,
+        blurRadius: 5,
+        offset: Offset(0, 3),
+      ),
+    ],
+  ),
+  child: ListView(
+  shrinkWrap: true,
+  children: [
+    SizedBox(
+      height: 100, // Define the height of the table within the ListView
+      child: SingleChildScrollView(
+        scrollDirection: Axis.vertical,
+        child: Table(
+          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+          columnWidths: const {
+            0: FlexColumnWidth(1),
+            1: FlexColumnWidth(1),
+          },
+          border: TableBorder.all(color: Colors.transparent),
+          children: [
+            /*TableRow(
+              children: [
+                buildTableCheckInCell(
+                  '${attendanceData!['CheckInTime']}',
+                  Colors.white,
+                  Color.fromARGB(255, 87, 178, 118),
+                ),
+                buildTableCheckOutCell(
+                  '${attendanceData['CheckOutTime']}',
+                  Colors.white,
+                  Color.fromARGB(255, 183, 90, 97),
+                ),
+              ],
+            ),*/
+            ...buildAttendanceTableCell(),
+          ],
+        ),
+      ),
+    ),
+  ],
+),
+
+),
+
           ]
         : [Text('No previous attendance data')],
   );
 }
 
-Container buildTableCheckInCell(String text, Color textColor, Color bgColor) {
+Container buildTableCheckInCell(String text, Color textColor, Color bgColor, double cellOpacity) {
   return Container(
     padding: EdgeInsets.only(right:16),
     decoration: BoxDecoration(
-      color: bgColor.withOpacity(0.5),
+      color: bgColor.withOpacity(cellOpacity-0.4),
       borderRadius: BorderRadius.circular(12),
     ),
     child: Center(
@@ -1113,11 +1132,11 @@ Container buildTableCheckInCell(String text, Color textColor, Color bgColor) {
   );
 }
 
-Container buildTableCheckOutCell(String text, Color textColor, Color bgColor) {
+Container buildTableCheckOutCell(String text, Color textColor, Color bgColor, double cellOpacity) {
   return Container(
     padding: EdgeInsets.only(left:16),
     decoration: BoxDecoration(
-      color: bgColor.withOpacity(0.5),
+      color: bgColor.withOpacity(cellOpacity-0.4),
       borderRadius: BorderRadius.circular(12),
     ),
     child: Center(
@@ -1134,6 +1153,34 @@ Container buildTableCheckOutCell(String text, Color textColor, Color bgColor) {
     ),
   );
 }
+
+List<TableRow> buildAttendanceTableCell() {
+  return sortedAttendanceDocData!.asMap().entries.map((entry) {
+    final index = entry.key;
+    final data = entry.value;
+
+    final cellOpacity = index == 0 ? 1.0 : 0.5; // Adjust opacity values as needed
+
+    return TableRow(
+      children: [
+        buildTableCheckInCell(
+          '${data['CheckInTime']}',
+          Colors.white.withOpacity(cellOpacity),
+          Color.fromARGB(255, 87, 178, 118),
+          cellOpacity
+        ),
+        buildTableCheckOutCell(
+          '${data['CheckOutTime']}',
+          Colors.white.withOpacity(cellOpacity),
+          Color.fromARGB(255, 183, 90, 97),
+          cellOpacity
+        ),
+      ],
+    );
+  }).toList();
+}
+
+
 
 
 
