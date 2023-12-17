@@ -986,40 +986,154 @@ Widget _buildEmployeeRectangle(BuildContext context) {
                   ),
                 ),
               ),
-Column(
-  crossAxisAlignment: CrossAxisAlignment.start,
-  children: previousAttendanceData != null
-      ? [
-          Padding(
-            padding: EdgeInsets.symmetric(vertical: 5),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Check-in: ${previousAttendanceData!['CheckInTime']}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.black,
-                  ),
-                ),
-                Text(
-                  'Check-out: ${previousAttendanceData!['CheckOutTime']}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.black,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ]
-      : [Text('No previous attendance data')],
-)
-,
+buildAttendanceTable(previousAttendanceData)
             ],
           ),
         );
       }
+
+/*Container buildTableCell(String text, Color textColor, Color bgColor) {
+  return Container(
+    padding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          bgColor.withOpacity(0.9),
+          bgColor.withOpacity(0.7),
+        ],
+      ),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Text(
+      text,
+      style: TextStyle(
+        fontSize: 16,
+        color: textColor,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
+  );
+}*/
+
+Widget buildAttendanceTable(Map<String, dynamic>? attendanceData) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: attendanceData?.isNotEmpty == true
+        ? [
+            Padding(
+              padding: EdgeInsets.only(bottom: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Check In',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  Text(
+                    'Check Out',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.5),
+                    spreadRadius: 2,
+                    blurRadius: 5,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Table(
+                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                columnWidths: const {
+                  0: FlexColumnWidth(1),
+                  1: FlexColumnWidth(1),
+                },
+                border: TableBorder.all(color: Colors.transparent),
+                children: [
+                  TableRow(
+                    children: [
+                      buildTableCheckInCell(
+                        '${attendanceData!['CheckInTime']}',
+                        Colors.white,
+                        Color.fromARGB(255, 87, 178, 118),
+                      ),
+                      buildTableCheckOutCell(
+                        '${attendanceData['CheckOutTime']}',
+                        Colors.white,
+                        Color.fromARGB(255, 183, 90, 97),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ]
+        : [Text('No previous attendance data')],
+  );
+}
+
+Container buildTableCheckInCell(String text, Color textColor, Color bgColor) {
+  return Container(
+    padding: EdgeInsets.only(right:16),
+    decoration: BoxDecoration(
+      color: bgColor.withOpacity(0.5),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Center(
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 16,
+          color: textColor,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.5,
+        ),
+        textAlign: TextAlign.left,
+      ),
+    ),
+  );
+}
+
+Container buildTableCheckOutCell(String text, Color textColor, Color bgColor) {
+  return Container(
+    padding: EdgeInsets.only(left:16),
+    decoration: BoxDecoration(
+      color: bgColor.withOpacity(0.5),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Center(
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 16,
+          color: textColor,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.5,
+        ),
+        textAlign: TextAlign.left,
+      ),
+    ),
+  );
+}
 
 
 
