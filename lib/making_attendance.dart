@@ -846,56 +846,69 @@ Widget build(BuildContext context) {
                   userData != null?
                     _buildEmployeeRectangle(context):
                     CircularProgressIndicator(),
-                  Center(
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children:[
-                        //Transparent circle that appears briefly when the button is clicked
-                        AnimatedOpacity(
-                          opacity: _showCircle ?1.0:0.0,
-                          duration: Duration(milliseconds: 500),
-                          child: Container(
-                            width: 210.0,
-                            height: 210.0,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color:  _isCheckedIn ? Colors.red.withOpacity(0.5):Colors.green.withOpacity(0.5)
-                            ),
-                          ),
-                        ),
-                        SizedBox(
-                        width: 200.0,
-                        height: 200.0,
-                        child: ElevatedButton(
-                          onPressed: _checkInOut,
-                          child: Text(
-                            _isCheckedIn ? 'Check Out' : 'Check In',
-                            style: TextStyle(fontSize: 28.0),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            shape: CircleBorder(),
-                            padding: EdgeInsets.all(24.0),
-                            elevation: 5.0, // Add elevation for a shadow effect
-                            primary: _isCheckedIn ? Color.fromARGB(255, 150, 57, 57) : Color.fromARGB(255, 51, 147, 92) , // Transparent background
-                            onPrimary: _isCheckedIn ? Colors.white : Colors.white, // Text color
-                            shadowColor: Colors.black, // Shadow color
-                            side: BorderSide(
-                              width: 1.0, // Border width
-                              color: _isCheckedIn ? const Color.fromARGB(255, 241, 91, 80) : const Color.fromARGB(255, 73, 186, 77), // Border color
-                            ),
-                          ),
-                        ),
-                      ),
-                      ]
-                    )
-                      
-                    ),
                   SizedBox(height: 20),
                   // Add other widgets and components as needed
                 ],//Column Children
               ),
             ),
           ),
+Positioned(
+  bottom: 0,
+  left: 0,
+  right: 0,
+  child: Center(
+    child: Stack(
+      alignment: Alignment.bottomCenter,
+      children: [
+         AnimatedOpacity(
+            opacity: _showCircle ? 1.0 : 0.0,
+            duration: Duration(milliseconds: 500),
+            child: Container(
+              
+              width: 220.0, // Adjust the width of the container
+              height: 100.0, // Adjust the height of the container
+              decoration: BoxDecoration(
+                color: _isCheckedIn ? Colors.red.withOpacity(0.5) : Colors.green.withOpacity(0.5),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(100.0),
+                  topRight: Radius.circular(100.0), // Half of the height for semicircle
+                ),
+              ),
+            ),
+          ),
+        
+        SizedBox(
+          width: 160.0, // Adjust the width of the button
+          height: 80.0, // Adjust the height of the button
+          child: ElevatedButton(
+            onPressed: _checkInOut,
+            child: Text(
+              _isCheckedIn ? 'Check Out' : 'Check In',
+              style: TextStyle(fontSize: 24.0), // Adjust the font size of the text
+            ),
+            style: ElevatedButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(80.0), // Half of the button's height for top corners
+                  topRight: Radius.circular(80.0), // Half of the button's height for top corners
+                ),
+              ),
+              padding: EdgeInsets.all(16.0), // Adjust the padding of the button
+              elevation: 5.0,
+              primary: _isCheckedIn ? Color.fromARGB(255, 150, 57, 57) : Color.fromARGB(255, 51, 147, 92),
+              onPrimary: Colors.white,
+              shadowColor: Colors.black,
+              side: BorderSide(
+                width: 1.0,
+                color: _isCheckedIn ? const Color.fromARGB(255, 241, 91, 80) : const Color.fromARGB(255, 73, 186, 77),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  ),
+),
           if (_isProcessing && (initialButtonState == _isCheckedIn))
             DarkOverlay(), // Your processing overlay widget
         ],
@@ -991,6 +1004,17 @@ Widget _buildEmployeeRectangle(BuildContext context) {
                   ),
                 ),
               ),
+               SizedBox(height: 10), // Spacer
+        // Display position from userData
+        Text(
+          userData!['position'] ?? '', // Assuming 'position' exists in userData
+          style: TextStyle(
+            color: Colors.grey[600], // Adjust color as needed
+            fontSize: 14,
+          ),
+        ),
+        SizedBox(height: 10), // Spacer
+        // Build attendance table
 buildAttendanceTable(previousAttendanceData)
             ],
           ),
@@ -1283,3 +1307,31 @@ class _DarkOverlayState extends State<DarkOverlay> {
     );
   }
 }
+
+class TopSemiCircleClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+        double radius = 120;
+    
+        Path path = Path();
+        path
+          ..moveTo(size.width / 2, 0)
+          ..arcToPoint(Offset(size.width, size.height),
+              radius: Radius.circular(radius))
+          ..lineTo(0, size.height)
+          ..arcToPoint(
+            Offset(size.width / 2, 0),
+            radius: Radius.circular(radius),
+          )
+          ..close();
+    
+        return path;
+      }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) {
+    return false;
+  }
+}
+
+
