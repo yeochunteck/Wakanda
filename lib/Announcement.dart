@@ -374,6 +374,59 @@ class _MakeAnnouncementPageState extends State<MakeAnnouncementPage> {
     // Get all company IDs
     List<String> allCompanyIds = await getAllCompanyIds();
 
+  Future<int> getLatestAnnouncementNumber() async {
+    try {
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance.collection('announcements').get();
+
+      int latestNumber = 0;
+
+      for (QueryDocumentSnapshot document in querySnapshot.docs) {
+        String documentId = document.id;
+        if (documentId.startsWith('General_Announcement_')) {
+          // Extract the announcement number
+          int number = int.tryParse(documentId.split('_').last) ?? 0;
+          if (number > latestNumber) {
+            latestNumber = number;
+          }
+        }
+      }
+
+      return latestNumber;
+    } catch (e) {
+      print('Error fetching latest announcement number: $e');
+      return 0;
+    }
+  }
+
+    // Get the latest announcement number
+    int latestAnnouncementNumber = await getLatestAnnouncementNumber();
+
+    // Create a unique document ID for the announcement
+    String documentId = 'General_Announcement_${latestAnnouncementNumber + 1}';
+
+    Future<List<String>> getAllCompanyIds() async {
+      List<String> companyIds = [];
+
+      try {
+        QuerySnapshot querySnapshot = await FirebaseFirestore.instance.collection('users').get();
+
+        for (QueryDocumentSnapshot document in querySnapshot.docs) {
+          // Assuming each document in 'users' has a field 'companyId'
+          String companyId = document['companyId'];
+          if (companyId.isNotEmpty) {
+            companyIds.add(companyId);
+          }
+        }
+      } catch (e) {
+        print('Error fetching company IDs: $e');
+      }
+
+      return companyIds;
+    }
+
+    // Get all company IDs
+    List<String> allCompanyIds = await getAllCompanyIds();
+
     // Add the announcement to Firebase Firestore
     await FirebaseFirestore.instance.collection('announcements').doc(documentId).set({
       'title': title,
