@@ -373,28 +373,6 @@ class _AttendancePageState extends State<AttendancePage>
       );
       return;
     }
-
-    /*setState((){
-      _isGPSEnabled = true;
-    });
-    try{
-      if(_currentLocation == null){
-        setState((){
-          _isLocationAvailable = false;
-        }
-        );
-        return;
-        }
-    }catch (e){
-      //Error occurred whike getting user location
-      setState((){
-        _isLocationAvailable = false;
-      });
-    }
-
-    setState((){
-      _isLocationAvailable = true;
-    });*/
   }
 
 //CheckInOut
@@ -467,6 +445,67 @@ class _AttendancePageState extends State<AttendancePage>
         String announcementTitle = 'Check-Out Success';
         String announcementContent = 'User ${widget.companyId} has successfully checked out at ${DateFormat('hh:mm:ss a').format(DateTime.now())}.';
         await _postCheckInOutAnnouncement(announcementTitle, announcementContent,widget.companyId);
+
+        //Parse date and time strings
+        List<String> currentDateParts = _currentDate.split('-');
+        DateTime currentDate = DateTime(
+          int.parse(currentDateParts[2]), // year
+          int.parse(currentDateParts[1]), // month
+          int.parse(currentDateParts[0]), // day
+    );
+
+        List<String> checkInTimeParts = (await latestAttendanceDoc.get())['CheckInTime'].split(':');
+        DateTime checkInTime = DateTime(
+            currentDate.year,
+            currentDate.month,
+            currentDate.day,
+            int.parse(checkInTimeParts[0]), // hour
+            int.parse(checkInTimeParts[1]), // minute
+            int.parse(checkInTimeParts[2]), // second
+        );
+
+        List<String> checkOutTimeParts = (await latestAttendanceDoc.get())['CheckOutTime'].split(':');
+        DateTime checkOutTime = DateTime(
+          currentDate.year,
+          currentDate.month,
+          currentDate.day,
+          int.parse(checkOutTimeParts[0]), // hour
+          int.parse(checkOutTimeParts[1]), // minute
+          int.parse(checkOutTimeParts[2]), // second
+    );
+
+        // Calculate working time
+        Duration workingDuration = checkOutTime.difference(checkInTime);
+    // Calculate working time in decimal hours
+        double totalWorkingHours = workingDuration.inSeconds / 3600; // Convert duration to hours
+
+        // Get current date components
+        String year = currentDate.year.toString();
+        String month = currentDate.month.toString().padLeft(2, '0');
+        String day = currentDate.day.toString().padLeft(2, '0');
+
+    // Reference to the workingtime document based on companyId, year, month, and day
+    CollectionReference dayCollectionRef = _firestore
+        .collection('workingtime')
+        .doc(widget.companyId) // Assuming widget.companyId represents the user's companyId
+        .collection(year)
+        .doc(month)
+        .collection(day);
+
+    // Reference to the workingtime document based on companyId, year, month, and day
+    DocumentReference dayDocRef = _firestore
+        .collection('workingtime')
+        .doc(widget.companyId) // Assuming widget.companyId represents the user's companyId
+        .collection(year)
+        .doc(month)
+        .collection(day)
+        .doc('dailyWorkingTime');
+
+    // Update the existing document or create a new one if it doesn't exist
+    await dayDocRef.set({
+        'totalworkingtime': FieldValue.increment(totalWorkingHours),
+    }, SetOptions(merge: true));
+
       }
 
       var latestDocId = latestAttendanceDoc.id;
