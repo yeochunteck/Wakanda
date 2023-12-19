@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/all_profile_page.dart';
 import 'package:logger/logger.dart';
+import 'package:flutter_application_1/salary_page.dart';
 import 'package:flutter_application_1/login_page.dart';
 import 'package:flutter_application_1/profile_page.dart';
 import 'package:flutter_application_1/create_user_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_application_1/data/repositories/profile_repository.dart';
+import 'package:flutter_application_1/user_management_page.dart';
 
 class MainPage extends StatefulWidget {
   final String companyId;
   final String userPosition;
+  // final user = FirebaseAuth.instance.currentUser!;
 
-  const MainPage(
-      {Key? key, required this.companyId, required this.userPosition})
+  MainPage({Key? key, required this.companyId, required this.userPosition})
       : super(key: key);
 
   @override
@@ -17,7 +22,20 @@ class MainPage extends StatefulWidget {
 }
 
 class _MainPageState extends State<MainPage> {
-  var logger = Logger();
+  final logger = Logger();
+  ProfileRepository profileRepository = ProfileRepository();
+
+  // Future<String> fetchName() async {
+  //   try {
+  //     String name =
+  //         await profileRepository.getNameByCompanyId(widget.companyId);
+  //     logger.i('Fetched name: $name');
+  //     return name;
+  //   } catch (e) {
+  //     logger.e('Error fetching name: $e');
+  //     return 'Guest';
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -79,15 +97,20 @@ class _MainPageState extends State<MainPage> {
         leading: Builder(
           builder: (BuildContext context) {
             return IconButton(
-              icon: const Icon(Icons.settings), // Settings icon on the left
+              icon: const Icon(Icons.menu), // Settings icon on the left
               onPressed: () {
-                // Handle settings icon pressed
+                Scaffold.of(context).openDrawer(); // Open the drawer
               },
             );
           },
         ),
         centerTitle: true,
       ),
+      drawer: MyDrawer(
+          companyId: widget.companyId,
+          nameFuture: ProfileRepository().getNameByCompanyId(
+              widget.companyId)), // Add your custom drawer widget here
+
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -96,6 +119,8 @@ class _MainPageState extends State<MainPage> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
+                FirebaseAuth.instance.signOut();
+                logger.i('Sign out');
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => const HomePage()),
@@ -106,6 +131,38 @@ class _MainPageState extends State<MainPage> {
                   Icon(Icons.logout),
                   SizedBox(width: 10),
                   Text('Logout'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => SalaryPage()),
+                );
+              },
+              child: const Row(
+                children: [
+                  Icon(Icons.money),
+                  SizedBox(width: 10),
+                  Text('Salary Page'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => AllProfilePage()),
+                );
+              },
+              child: const Row(
+                children: [
+                  Icon(Icons.group),
+                  SizedBox(width: 10),
+                  Text('All Profile Page'),
                 ],
               ),
             ),
@@ -131,6 +188,191 @@ class _MainPageState extends State<MainPage> {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class MyDrawer extends StatelessWidget {
+  final String companyId;
+  final Future<String> nameFuture;
+
+  MyDrawer({Key? key, required this.companyId, required this.nameFuture})
+      : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: <Widget>[
+          DrawerHeader(
+            decoration: BoxDecoration(
+              color: const Color.fromRGBO(229, 63, 248, 1),
+            ),
+            child: FutureBuilder<String>(
+              future: nameFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 10), // Adjust the height as needed
+                        Text('Loading...'),
+                      ],
+                    ),
+                  );
+                } else if (snapshot.hasError) {
+                  return Text('Error loading name');
+                } else {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(height: 16),
+                      Text(
+                        'Welcome back,',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 16,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        snapshot.data ?? "Guest",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                        ),
+                      ),
+                    ],
+                  );
+                }
+              },
+            ),
+          ),
+          ListTile(
+            title: Text(
+              'Home',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            leading: Icon(Icons.home),
+            onTap: () {
+              // Handle navigation to MainPage()
+              Navigator.pop(context); // Close the drawer
+              // Navigator.push(
+              //   context,
+              //   MaterialPageRoute(builder: (context) => MainPage(companyId: widget.companyId, )),
+              // );
+            },
+          ),
+          ListTile(
+            title: Text(
+              'Attendance',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            leading: Icon(Icons.check_circle_outline),
+            onTap: () {
+              // Handle navigation to MainPage()
+              Navigator.pop(context); // Close the drawer
+              // Navigator.push(
+              //   context,
+              //   MaterialPageRoute(builder: (context) => MainPage(companyId: widget.companyId, )),
+              // );
+            },
+          ),
+          ListTile(
+            title: Text(
+              'Leave',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            leading: Icon(Icons.calendar_today),
+            onTap: () {
+              // Handle navigation to MainPage()
+              Navigator.pop(context); // Close the drawer
+              // Navigator.push(
+              //   context,
+              //   MaterialPageRoute(builder: (context) => MainPage(companyId: widget.companyId, )),
+              // );
+            },
+          ),
+          ListTile(
+            title: Text(
+              'Claim',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            leading: Icon(Icons.request_page),
+            onTap: () {
+              // Handle navigation to MainPage()
+              Navigator.pop(context); // Close the drawer
+              // Navigator.push(
+              //   context,
+              //   MaterialPageRoute(builder: (context) => MainPage(companyId: widget.companyId, )),
+              // );
+            },
+          ),
+          ListTile(
+            title: Text(
+              'Salary',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            leading: Icon(Icons.attach_money),
+            onTap: () {
+              // Handle navigation to MainPage()
+              Navigator.pop(context); // Close the drawer
+              // Navigator.push(
+              //   context,
+              //   MaterialPageRoute(builder: (context) => MainPage(companyId: widget.companyId, )),
+              // );
+            },
+          ),
+          ListTile(
+            title: Text(
+              'Notification',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            leading: Icon(Icons.notifications),
+            onTap: () {
+              // Handle navigation to MainPage()
+              Navigator.pop(context); // Close the drawer
+              // Navigator.push(
+              //   context,
+              //   MaterialPageRoute(builder: (context) => MainPage(companyId: widget.companyId, )),
+              // );
+            },
+          ),
+          ListTile(
+            title: Text(
+              'User Management',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            leading: Icon(Icons.manage_accounts),
+            onTap: () {
+              // Handle navigation to MainPage()
+              Navigator.pop(context); // Close the drawer
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => UserManagementPage()),
+              );
+            },
+          ),
+          // Add more ListTile widgets for additional pages
+        ],
       ),
     );
   }
