@@ -11,6 +11,7 @@ import 'dart:ui';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
+//Logger Configuration
 final logger = Logger(
   printer: PrettyPrinter(
     methodCount: 2, // number of method calls to be displayed
@@ -48,14 +49,19 @@ class _AttendancePageState extends State<AttendancePage>
   bool? expectedStatus;
   //Control Flag
   bool? initialButtonState;
-  bool _isCheckedIn = false;
+  bool _isCheckedIn = false; 
+  bool _isProcessing = false;
+  bool _isGPSEnabled = true;
+  bool _isLocationAvailable = true;
   //Current variable
   String _currentDate = '';
   String _currentTime = '';
-  bool _isProcessing = false;
+    //--Animation Handler
   bool _showCircle = false;
-    //Location
+    //---Location
+  PermissionStatus? LocationPermission;
   LatLng? _currentLocation; // Nullable type for current location
+  //Modification in future
   GoogleMapController? _mapController;
   String _locationName = 'Unknown'; // Variable to store the location name
   String _address = 'Unknown';
@@ -84,10 +90,11 @@ class _AttendancePageState extends State<AttendancePage>
 
   Future<void> _fetchUserData() async {
     // Fetch user data asynchronously
-    final data = await _getUserData(); // Replace this with your data fetching logic
-    setState(() {
-      userData = data;
-    });
+    final data = await _getUserData();
+    userData = data;
+     // Replace this with your data fetching logic
+    //setState(() {
+    //});
   }  
 
   //Announcement
@@ -110,9 +117,11 @@ class _AttendancePageState extends State<AttendancePage>
     }
   }
   
-
   //ListenToDatabase
   void _listenToAttendanceChanges() {
+    setState((){
+    });
+
     _attendanceStream = FirebaseFirestore.instance
         .collection('Attendance')
         .doc(widget.companyId)
@@ -135,18 +144,21 @@ class _AttendancePageState extends State<AttendancePage>
           DocumentSnapshot latestRecord = snapshot.docs.first;
           previousAttendanceDoc = latestRecord;
           //List<QueryDocumentSnapshot> sortedAttendanceDoc = snapshot.docs;
-          sortedAttendanceDocData = snapshot.docs
-          .map((doc)=>doc.data() as Map<String,dynamic>)
-          .toList() ; 
-          
-          
+          setState((){          
+            sortedAttendanceDocData = snapshot.docs
+            .map((doc)=>doc.data() as Map<String,dynamic>)
+            .toList(); 
+          });
+
           var documentId = latestRecord.id;
           logger.d('Document ID: $documentId');
+          logger.d('UserData: $userData');
           
           var data = latestRecord.data();
           previousAttendanceData = data as Map<String, dynamic>;
 
           logger.i('=== Fields of the current latest record ===');
+          //Modification in Future
           if (data != null && data is Map<String, dynamic>) {
             data.forEach((key, value) {
               logger.i('$key: $value'); // Log fields of the latest record
@@ -189,16 +201,7 @@ class _AttendancePageState extends State<AttendancePage>
     }
     );
   }
-
-  void _startListenerRefresh() {
-    const refreshInterval = Duration(seconds: 30); // Refresh interval of 30 seconds (modify as needed)
-
-    _listenerTimer = Timer.periodic(refreshInterval, (timer) {
-      _attendanceStream?.cancel(); // Cancel the current listener
-      _listenToAttendanceChanges(); // Re-establish the listener
-    });
-  }
-
+  //Stop Listener
   void _stopListenerRefresh() {
     _listenerTimer?.cancel();
   }
@@ -218,6 +221,7 @@ class _AttendancePageState extends State<AttendancePage>
     });
   }
 
+  //DateTime Update In Real Time 
   void _updateDateTime() {
     // Fetch and update date/time every second
     _dateTimeTimer = Timer.periodic(Duration(seconds: 1), (timer) {
@@ -229,12 +233,13 @@ class _AttendancePageState extends State<AttendancePage>
     });
   }
 
+  //Real DateTime Update Stop
   void _stopDateTimeUpdates() {
     // Cancel the timer to stop updating date/time
     _dateTimeTimer.cancel();
   }
 
-//getCurrentLocation
+  //getCurrentLocation
   Future<void> _getCurrentLocation() async {
     try {
       Position position = await Geolocator.getCurrentPosition(
@@ -249,10 +254,14 @@ class _AttendancePageState extends State<AttendancePage>
       print("Error getting current location: $e");
     }
   }
-
+  
+  //LocationPermission
   Future<void>_requestLocationPermission() async{
     PermissionStatus permissionStatus = await Permission.location.request();
-
+    setState((
+    ) {
+      LocationPermission = permissionStatus;
+    });
     if(permissionStatus.isGranted){
       _getCurrentLocation();
     }else if(permissionStatus.isDenied || permissionStatus.isRestricted) {
@@ -265,13 +274,15 @@ class _AttendancePageState extends State<AttendancePage>
     };
   }
 
-     void _onMapCreated(GoogleMapController controller) {
+  //MapWidget Init
+  void _onMapCreated(GoogleMapController controller) {
     _mapController = controller;
 
     _getCurrentLocation();
     _startLocationUpdates();
   }
 
+  //Real Time Location Update
   void _startLocationUpdates() {
     Geolocator.getPositionStream().listen((Position position) {
       if (mounted) {
@@ -280,30 +291,34 @@ class _AttendancePageState extends State<AttendancePage>
         });
 
         _updateLocationDetails(position.latitude, position.longitude);
+        if(LocationPermission!.isGranted){
+          checkGPSStatus();
+        }
       }
     });
   }
 
-//Permission
-    void _showPermissionDeniedDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Location Permission Denied'),
-        content: Text('Please grant access to the location to use this feature.'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              openAppSettings(); // Opens the app settings to allow users to grant permission
-            },
-            child: Text('Open Settings'),
-          ),
-        ],
-      ),
-    );
-  }
+  //Permission Denied Message
+  void _showPermissionDeniedDialog() {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text('Location Permission Denied'),
+      content: Text('Please grant access to the location to use this feature.'),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+            openAppSettings(); // Opens the app settings to allow users to grant permission
+          },
+          child: Text('Open Settings'),
+        ),
+      ],
+    ),
+  );
+}
 
+  //Permission Permanently Denied Message
   void _showPermanentlyDeniedDialog() {
     showDialog(
       context: context,
@@ -323,6 +338,7 @@ class _AttendancePageState extends State<AttendancePage>
     );
   }
 
+  //Map Widget Coord Update
   Future<void> _updateLocationDetails(double latitude, double longitude) async {
     try {
       List<Placemark> placemarks = await placemarkFromCoordinates(
@@ -338,6 +354,47 @@ class _AttendancePageState extends State<AttendancePage>
     } catch (e) {
       print("Error getting location details: $e");
     }
+  }
+
+  //CheckGPSStatus
+  Future<void> checkGPSStatus() async {
+    bool serviceEnabled;
+
+    //Check if location service is enabled
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if(!serviceEnabled){
+      //Location services are not enabled
+      setState((){
+        _isGPSEnabled = false;
+        _currentLocation = null;
+        _address = 'Unknown';
+        //_isLocationAvailable = true;
+      }
+      );
+      return;
+    }
+
+    /*setState((){
+      _isGPSEnabled = true;
+    });
+    try{
+      if(_currentLocation == null){
+        setState((){
+          _isLocationAvailable = false;
+        }
+        );
+        return;
+        }
+    }catch (e){
+      //Error occurred whike getting user location
+      setState((){
+        _isLocationAvailable = false;
+      });
+    }
+
+    setState((){
+      _isLocationAvailable = true;
+    });*/
   }
 
 //CheckInOut
@@ -383,7 +440,7 @@ class _AttendancePageState extends State<AttendancePage>
 
         await checkInDocRef.set({
           'CheckInLocation': geoPoint,
-          'CheckInTime': timeKey,
+          'CheckInTime': _currentTime,
         });
 
         _recentlyCheckInDoc = checkInDocRef;
@@ -401,7 +458,7 @@ class _AttendancePageState extends State<AttendancePage>
 
         await latestAttendanceDoc.update({
           'CheckOutLocation': geoPoint,
-          'CheckOutTime': timeKey,
+          'CheckOutTime': _currentTime,
         });
 
         latestAttendanceDoc = await _getLatestAttendanceDoc();
@@ -462,8 +519,7 @@ class _AttendancePageState extends State<AttendancePage>
   @override
   void initState() {
     super.initState();
-    //Personal
-    _fetchUserData();
+
     //Current
     _getCurrentDate();
     _getCurrentTime();
@@ -492,6 +548,10 @@ class _AttendancePageState extends State<AttendancePage>
     _updateDateTime(); // Fetch and start updating date/time
     _requestLocationPermission();//LocationPermission
     _listenToAttendanceChanges();
+        //Personal
+    _fetchUserData();
+    checkGPSStatus();
+    
   }
 
   
@@ -828,21 +888,58 @@ Widget build(BuildContext context) {
                               : Center(child: CircularProgressIndicator()),
                   ),
                   SizedBox(height: 20),
-                  Text(
-                    'Location: $_locationName',
-                    style: TextStyle(
-                      fontSize: 16.0,
-                      color: Colors.black87,
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(12.0),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(24.0),
+                          color: Colors.blue.withOpacity(0.2),
+                        ),
+                        child: Icon(
+                          Icons.location_on,
+                          color: Colors.blue,
+                          size: 24.0,
+                        ),
+                      ),
+                      SizedBox(width: 12), // Add some space between icon and label
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'ADDRESS',
+                            style: TextStyle(
+                              fontSize: 14.0,
+                              color: Colors.black87,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          SizedBox(height: 8), // Add space between label and value
+                        ],
+                      ),
+                      Expanded(
+                        child: Container(
+                          padding: EdgeInsets.all(12.0),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
+                          child: Text(
+                            '$_address',
+                            style: TextStyle(
+                              fontSize: 16.0,
+                              color: Colors.black87,
+                              // You can apply more styles such as fontFamily, fontStyle, etc.
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    'Address: $_address',
-                    style: TextStyle(
-                      fontSize: 16.0,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  SizedBox(height: 20),
+                  SizedBox(height: 10),
                   userData != null?
                     _buildEmployeeRectangle(context):
                     CircularProgressIndicator(),
@@ -861,56 +958,65 @@ Positioned(
       alignment: Alignment.bottomCenter,
       children: [
          AnimatedOpacity(
-            opacity: _showCircle ? 1.0 : 0.0,
-            duration: Duration(milliseconds: 500),
-            child: Container(
-              
-              width: 220.0, // Adjust the width of the container
-              height: 100.0, // Adjust the height of the container
-              decoration: BoxDecoration(
-                color: _isCheckedIn ? Colors.red.withOpacity(0.5) : Colors.green.withOpacity(0.5),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(100.0),
-                  topRight: Radius.circular(100.0), // Half of the height for semicircle
+  opacity: _showCircle ? 1.0 : 0.0,
+  duration: Duration(milliseconds: 500),
+  child: Container(
+    width: 180.0, // Reduced width
+    height: 80.0, // Reduced height
+    decoration: BoxDecoration(
+      color: _isCheckedIn ? Colors.red.withOpacity(0.5) : Colors.green.withOpacity(0.5),
+      borderRadius: BorderRadius.only(
+        topLeft: Radius.circular(80.0), // Half of the height for semicircle
+        topRight: Radius.circular(80.0), // Half of the height for semicircle
+      ),
+    ),
+  ),
+),
+
+SizedBox(
+  width: 120.0, // Reduced width
+  height: 60.0, // Reduced height
+  child: ElevatedButton(
+    onPressed: _checkInOut,
+    child:  Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(height: 10), // Adjust the height to position the text below
+                Text(
+                  _isCheckedIn ? 'Check Out' : 'Check In',
+                  style: TextStyle(fontSize: 18.0),
                 ),
-              ),
+              ],
             ),
-          ),
-        
-        SizedBox(
-          width: 160.0, // Adjust the width of the button
-          height: 80.0, // Adjust the height of the button
-          child: ElevatedButton(
-            onPressed: _checkInOut,
-            child: Text(
-              _isCheckedIn ? 'Check Out' : 'Check In',
-              style: TextStyle(fontSize: 24.0), // Adjust the font size of the text
-            ),
-            style: ElevatedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(80.0), // Half of the button's height for top corners
-                  topRight: Radius.circular(80.0), // Half of the button's height for top corners
-                ),
-              ),
-              padding: EdgeInsets.all(16.0), // Adjust the padding of the button
-              elevation: 5.0,
-              primary: _isCheckedIn ? Color.fromARGB(255, 150, 57, 57) : Color.fromARGB(255, 51, 147, 92),
-              onPrimary: Colors.white,
-              shadowColor: Colors.black,
-              side: BorderSide(
-                width: 1.0,
-                color: _isCheckedIn ? const Color.fromARGB(255, 241, 91, 80) : const Color.fromARGB(255, 73, 186, 77),
-              ),
-            ),
-          ),
+    style: ElevatedButton.styleFrom(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(60.0), // Half of the button's height for top corners
+          topRight: Radius.circular(60.0), // Half of the button's height for top corners
         ),
+      ),
+      padding: EdgeInsets.all(12.0), // Adjusted padding
+      elevation: 5.0, // Reduced elevation
+      primary: _isCheckedIn ? Color.fromARGB(255, 150, 57, 57) : Color.fromARGB(255, 51, 147, 92),
+      onPrimary: Colors.white,
+      shadowColor: Colors.black,
+      side: BorderSide(
+        width: 1.0,
+        color: _isCheckedIn ? const Color.fromARGB(255, 241, 91, 80) : const Color.fromARGB(255, 73, 186, 77),
+      ),
+    ),
+  ),
+),
       ],
     ),
   ),
 ),
-          if (_isProcessing && (initialButtonState == _isCheckedIn))
-            DarkOverlay(), // Your processing overlay widget
+         if ((LocationPermission?.isGranted ?? false) && (_currentLocation == null || userData ==null) || (initialButtonState == _isCheckedIn))
+            DarkOverlay(
+              isGPSEnabled : _isGPSEnabled,
+              isLocationAvailable: _isLocationAvailable,
+              loading: (_currentLocation ==null ||userData ==null),
+            ), // Your processing overlay widget00
         ],
       ),
     );
@@ -1006,13 +1112,25 @@ Widget _buildEmployeeRectangle(BuildContext context) {
               ),
                SizedBox(height: 10), // Spacer
         // Display position from userData
-        Text(
-          userData!['position'] ?? '', // Assuming 'position' exists in userData
-          style: TextStyle(
-            color: Colors.grey[600], // Adjust color as needed
-            fontSize: 14,
-          ),
-        ),
+                Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.business, // Replace this with the icon representing the department
+                    color: Colors.blue, // Adjust icon color as needed
+                    size: 20.0,
+                  ),
+                  SizedBox(width: 8), // Add some space between icon and text
+                  Text(
+                    userData!['position'] ?? '', // Assuming 'position' exists in userData
+                    style: TextStyle(
+                      color: Colors.grey[600], // Adjust text color as needed
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
         SizedBox(height: 10), // Spacer
         // Build attendance table
 buildAttendanceTable(previousAttendanceData)
@@ -1090,6 +1208,7 @@ Widget buildAttendanceTable(Map<String, dynamic>? attendanceData) {
       ),
     ],
   ),
+  child:Scrollbar(
   child: ListView(
   shrinkWrap: true,
   children: [
@@ -1126,6 +1245,8 @@ Widget buildAttendanceTable(Map<String, dynamic>? attendanceData) {
     ),
   ],
 ),
+
+)
 
 ),
 
@@ -1225,12 +1346,22 @@ Widget _buildLoadingInterface() {
 }
 
 class DarkOverlay extends StatefulWidget {
+  bool? isGPSEnabled;
+  bool? isLocationAvailable;
+  LatLng? currentLocation;
+  bool? loading;
+
+  DarkOverlay({required this. isGPSEnabled,required this. isLocationAvailable,required this.loading});
+  
   @override
   _DarkOverlayState createState() => _DarkOverlayState();
+
 }
 
 class _DarkOverlayState extends State<DarkOverlay> {
   bool _error = false;
+
+
 
   @override
   void initState() {
@@ -1256,56 +1387,124 @@ class _DarkOverlayState extends State<DarkOverlay> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.black.withOpacity(0.5),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(
-             valueColor: AlwaysStoppedAnimation<Color>(Colors.blue), // Customize color
+Widget build(BuildContext context) {
+  return Container(
+  color: Colors.black.withOpacity(0.5),
+  child: Center(
+    child: BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20.0),
+        child: Container(
+          padding: EdgeInsets.all(20.0),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(12.0),
           ),
-          SizedBox(height: 20), // Adjust the spacing as needed
-          if (_error)
-            Column(
-              children: [
-                Text(
-                  'Feature is currently unavailable.',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
-                ),
-                SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: _restartApp,
-                  child: Text('Restart the App'),
-                  style: ElevatedButton.styleFrom(
-                    primary: Colors.red, // Change button color
-                  ),
-                ),
-                SizedBox(height: 10),
-                ElevatedButton(
-                  onPressed: _leavePage,
-                  child: Text('Leave the Page'),
-                  style: ElevatedButton.styleFrom(
-                    primary: Colors.blue, // Change button color
-                  ),
-                ),
-              ],
-            ),
-          if (!_error)
-            Text(
-              'Recording in progress...',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
               ),
-            ),
-        ],
+              SizedBox(height: 30),
+              _error
+                  ? widget.isGPSEnabled!
+                      ? Column(
+                          children: [
+                            Text(
+                              'Feature is currently unavailable.',
+                              style: TextStyle(
+                                color: Colors.black87,
+                                fontSize: 18,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            SizedBox(height: 20),
+                            ElevatedButton(
+                              onPressed: _restartApp,
+                              child: Text('Restart the App'),
+                              style: ElevatedButton.styleFrom(
+                                primary: Colors.red,
+                                onPrimary: Colors.white,
+                                textStyle: TextStyle(fontSize: 16),
+                                padding: EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 24,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 10),
+                            ElevatedButton(
+                              onPressed: _leavePage,
+                              child: Text('Leave the Page'),
+                              style: ElevatedButton.styleFrom(
+                                primary: Colors.blue,
+                                onPrimary: Colors.white,
+                                textStyle: TextStyle(fontSize: 16),
+                                padding: EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 24,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Feature is currently unavailable because GPS is not enabled',
+                              style: TextStyle(
+                                color: Colors.black87,
+                                fontSize: 18,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            SizedBox(height: 20),
+                            ElevatedButton(
+                              onPressed: () {
+                                Geolocator.openLocationSettings();
+                              },
+                              child: Text('Enable GPS'),
+                              style: ElevatedButton.styleFrom(
+                                primary: Colors.blue,
+                                onPrimary: Colors.white,
+                                textStyle: TextStyle(fontSize: 16),
+                                padding: EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 24,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                  : Text(
+                      !widget.loading!
+                          ? 'Recording in progress...'
+                          : 'Loading...',
+                      style: TextStyle(
+                        color: Colors.black87,
+                        fontSize: 18,
+                      ),
+                    ),
+            ],
+          ),
+        ),
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 }
 
 class TopSemiCircleClipper extends CustomClipper<Path> {
