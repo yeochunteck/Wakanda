@@ -5,7 +5,7 @@ import 'package:flutter_application_1/login_page.dart';
 import 'package:intl/intl.dart';
 // import 'dart:io';
 // import 'dart:async';
-
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_application_1/data/repositories/profile_repository.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
@@ -66,6 +66,8 @@ class ProfilePage extends StatelessWidget {
                         ),
                         TextButton(
                           onPressed: () {
+                            FirebaseAuth.instance.signOut();
+                            logger.i('Sign out');
                             // Perform logout action
                             Navigator.pushAndRemoveUntil(
                               context,
@@ -91,7 +93,18 @@ class ProfilePage extends StatelessWidget {
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 // Loading indicator while fetching data
-                return const Center(child: CircularProgressIndicator());
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                          height: MediaQuery.of(context).size.height *
+                              0.4), // Optional spacing
+                      CircularProgressIndicator(),
+                      Text('Loading...'),
+                    ],
+                  ),
+                );
               }
 
               if (snapshot.hasError) {

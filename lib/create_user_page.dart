@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:logger/logger.dart';
@@ -6,7 +7,10 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_application_1/login_page.dart';
 import 'package:flutter_application_1/data/repositories/profile_repository.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:email_validator/email_validator.dart';
 
 enum Gender { male, female }
 
@@ -541,11 +545,12 @@ class _CreateUserPageState extends State<CreateUserPage> {
                     return 'Please enter your email';
                   }
 
-                  final emailRegex = RegExp(
-                    r'^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$',
-                  );
+                  // final emailRegex = RegExp(
+                  //   r'^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$',
+                  // );
+                  final bool isValid = EmailValidator.validate(value);
 
-                  if (!emailRegex.hasMatch(value)) {
+                  if (!isValid) {
                     return 'Please enter a valid email address';
                   }
 
@@ -626,6 +631,7 @@ class _CreateUserPageState extends State<CreateUserPage> {
                 onTap: () => _selectDateofBirth(context),
                 child: AbsorbPointer(
                   child: TextFormField(
+                    readOnly: true, // Set to true to make it read-only
                     decoration: InputDecoration(labelText: 'Date of Birth'),
                     validator: (value) {
                       if (dateOfBirth == null) {
@@ -647,6 +653,7 @@ class _CreateUserPageState extends State<CreateUserPage> {
                 onTap: () => _selectJoiningDate(context),
                 child: AbsorbPointer(
                   child: TextFormField(
+                    readOnly: true, // Set to true to make it read-only
                     decoration: InputDecoration(labelText: 'Joining Date'),
                     validator: (value) {
                       if (joiningDate == null) {
