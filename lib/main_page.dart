@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/Leave_main_page.dart';
 import 'package:flutter_application_1/making_attendance.dart';
 import 'package:logger/logger.dart';
 import 'package:flutter_application_1/salary_page.dart';
 import 'package:flutter_application_1/login_page.dart';
 import 'package:flutter_application_1/profile_page.dart';
 import 'package:flutter_application_1/create_user_page.dart';
+//import 'package:flutter_application_1/Leave_main_page.dart';
 import 'package:flutter_application_1/Apply_FullLeave_page.dart';
+import 'package:flutter_application_1/managerPart/checkPendingLeave.dart';
 import 'package:flutter_application_1/Announcement.dart';
 
 class MainPage extends StatefulWidget {
@@ -97,6 +100,26 @@ class _MainPageState extends State<MainPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             // Add more widgets and functionality for your main page here
+            if (widget.userPosition != 'Manager')
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => LeavePage(
+                            companyId: widget.companyId,
+                            userPosition: widget.userPosition)),
+                  );
+                },
+                child: const Row(
+                  children: [
+                    Icon(Icons.article),
+                    SizedBox(width: 10),
+                    Text('Apply Leave'),
+                  ],
+                ),
+              ),
+
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
@@ -113,23 +136,27 @@ class _MainPageState extends State<MainPage> {
                 ],
               ),
             ),
+
             const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => ApplyLeave(companyId: widget.companyId)),
-                );
-              },
-              child: Row(
-                children: [
-                  Icon(Icons.article),
-                  SizedBox(width: 10),
-                  Text('Apply Leave'),
-                ],
+            if (widget.userPosition == 'Manager')
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => CheckPendingLeave(
+                            companyId: widget.companyId,
+                            userPosition: widget.userPosition)),
+                  );
+                },
+                child: const Row(
+                  children: [
+                    Icon(Icons.add),
+                    SizedBox(width: 10),
+                    Text('Check Leave'),
+                  ],
+                ),
               ),
-            ),
             const SizedBox(height: 20),
                         ElevatedButton(
               onPressed: () {
@@ -156,7 +183,7 @@ class _MainPageState extends State<MainPage> {
               },
               child: const Row(
                 children: [
-                  Icon(Icons.logout),
+                  Icon(Icons.announcement),
                   SizedBox(width: 10),
                   Text('Announcement'),
                 ],
