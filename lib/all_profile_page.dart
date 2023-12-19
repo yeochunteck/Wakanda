@@ -70,9 +70,10 @@ class _AllProfilePageState extends State<AllProfilePage> {
           },
         ),
         title: const Text(
-          'Profile Page',
+          'All User Profile',
           style: TextStyle(color: Colors.black),
         ),
+        centerTitle: true,
       ),
       body: Column(
         children: [
@@ -142,7 +143,16 @@ class _AllProfilePageState extends State<AllProfilePage> {
               future: _getFilteredUsers(_search),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 10), // Adjust the height as needed
+                        Text('Loading...'),
+                      ],
+                    ),
+                  );
                 } else if (snapshot.hasError) {
                   return Center(child: Text('Error: ${snapshot.error}'));
                 } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
