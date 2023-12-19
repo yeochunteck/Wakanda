@@ -54,7 +54,11 @@ dependencies:
   email_validator: "^2.1.16"
   firebase_admin: ^0.2.0
 
-  # localization: ^2.1.1
+  google_maps_flutter: ^2.5.0
+  geolocator: ^10.1.0
+  geocoding: ^2.1.1
+  firebase_performance: ^0.9.3+6
+  toggle_switch: ^2.1.0
 
 dev_dependencies:
   flutter_test:
@@ -79,6 +83,9 @@ flutter:
 
   assets:
     - assets/images/logo.png
+    #- assets/image_01.jpg
+    #- assets/image_02.jpg
+    #- assets/image_03.jpg
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg
@@ -106,6 +113,11 @@ flutter:
   #       - asset: fonts/TrajanPro.ttf
   #       - asset: fonts/TrajanPro_Bold.ttf
   #         weight: 700
+
+  fonts:
+    - family: Caveat
+      fonts:
+        #- asset: fonts/Caveat-Regular.ttf
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
