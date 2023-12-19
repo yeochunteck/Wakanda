@@ -50,14 +50,19 @@ dependencies:
   printing: ^5.11.1
   open_file: ^3.3.2
   flutter_local_notifications: ^16.2.0
+  permission_handler: ^11.0.1
+  firebase_auth: ^4.15.3
+  email_validator: "^2.1.16"
+  firebase_admin: ^0.2.0
 
-  # localization: ^2.1.1
   google_maps_flutter: ^2.5.0
   geolocator: ^10.1.0
-  permission_handler: ^11.0.1
   geocoding: ^2.1.1
   firebase_performance: ^0.9.3+6
   toggle_switch: ^2.1.0
+  
+  
+  
 
 dev_dependencies:
   flutter_test:

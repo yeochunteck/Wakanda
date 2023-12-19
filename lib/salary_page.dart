@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_application_1/data/repositories/profile_repository.dart';
 import 'package:flutter_application_1/profile_page.dart';
 import 'package:flutter_application_1/edit_profile_page.dart';
-// import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:month_year_picker/month_year_picker.dart';
 import 'package:flutter_application_1/view_salary_page.dart';
 import 'package:intl/intl.dart';

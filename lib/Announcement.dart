@@ -155,7 +155,10 @@ class AnnouncementList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('announcements').snapshots(),
+      stream: FirebaseFirestore.instance
+        .collection('announcements')
+        .orderBy('timestamp', descending: true) // Order by timestamp in descending order
+        .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return const Text('Error loading announcements');

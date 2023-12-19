@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/main_page.dart';
+import 'package:flutter_application_1/Leave_main_page.dart';
 import 'package:flutter_application_1/half_DayLeave_Page.dart';
 import 'package:toggle_switch/toggle_switch.dart';
 import 'package:intl/intl.dart';
@@ -24,25 +25,28 @@ class _ApplyLeave extends State<ApplyLeave> {
 
   // final TextEditingController _startDateController = TextEditingController();
   // final TextEditingController _endDateController = TextEditingController();
-  final TextEditingController _leaveDayController = TextEditingController();
+  // final TextEditingController _annualBalanceController = TextEditingController();
   final TextEditingController _reasonController = TextEditingController();
   final TextEditingController _remarkController = TextEditingController();
 
+  int? annualLeaveBalance;
   String leaveType = 'Annual';
   String fullORHalf = 'Full';
   DateTime? startDate;
   DateTime? endDate;
-  int? leaveDay;
-  String reason = 'sick';
+  double? leaveDay;
+  String? reason;
   String? remark;
   DateTime selectedDate = DateTime.now();
+  String status = 'pending';
+  bool isDataLoaded = false;
 
   Future<void> _selectStartDate(BuildContext context) async {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
     );
 
     if (pickedDate != null && pickedDate != selectedDate) {
@@ -56,19 +60,39 @@ class _ApplyLeave extends State<ApplyLeave> {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
     );
 
     if (pickedDate != null) {
-      setState(() {
-        endDate = pickedDate;
-        leaveDay = calculateDateDifference();
-      });
+      if (pickedDate.isAfter(startDate!) ||
+          pickedDate.isAtSameMomentAs(startDate!)) {
+        setState(() {
+          endDate = pickedDate;
+          leaveDay = calculateDateDifference();
+        });
+      } else {
+        // ignore: use_build_context_synchronously
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Invalid Date'),
+            content: Text('End date cannot be earlier than start date.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
     }
   }
 
-  int calculateDateDifference() {
+  double calculateDateDifference() {
     if (startDate != null && endDate != null) {
       final difference = endDate!.difference(startDate!);
       return (difference.inDays.abs() + 1);
@@ -86,12 +110,45 @@ class _ApplyLeave extends State<ApplyLeave> {
       'endDate': endDate,
       'leaveDay': leaveDay,
       'reason': reason,
-      'remark': remark
+      'remark': remark,
+      'status' : status
     });
 
     // Navigate back to the profile page
     // ignore: use_build_context_synchronously
-    Navigator.pop(context);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LeavePage(
+          userPosition: widget.userPosition,
+          companyId: widget.companyId,
+        )
+      ),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Fetch user data when the page is initialized
+    fetchUserData();
+  }
+
+  Future<void> fetchUserData() async {
+    try {
+      final userData = await LeaveModel().getUserData(widget.companyId);
+
+      // ignore: unnecessary_null_comparison
+      if (userData != null) {
+        setState(() {
+          annualLeaveBalance = userData['annualLeaveBalance'] ?? '';
+          isDataLoaded = true;
+        });
+      }
+    } catch (e) {
+      logger.e('Error fetching user data: $e');
+    }
   }
 
   @override
@@ -99,7 +156,7 @@ class _ApplyLeave extends State<ApplyLeave> {
     return Scaffold(
         backgroundColor: const Color.fromARGB(255, 255, 255, 255),
         appBar: AppBar(
-          backgroundColor: Color.fromARGB(255, 224, 45, 255),
+          backgroundColor: const Color.fromARGB(255, 224, 45, 255),
           title: const Text(
             'Leave Application',
             style: TextStyle(color: Colors.black),
@@ -111,7 +168,15 @@ class _ApplyLeave extends State<ApplyLeave> {
               color: Colors.black,
             ),
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => LeavePage(
+                    userPosition: widget.userPosition,
+                    companyId: widget.companyId,
+                  )
+                )
+              );
             },
           ),
         ),
@@ -155,7 +220,6 @@ class _ApplyLeave extends State<ApplyLeave> {
                     if (index == 0) {
                       String selectedLabel = 'Annual';
                       leaveType = selectedLabel;
-                      logger.i(leaveType);
                     } else if (index == 1) {
                       String selectedLabel = 'Unpaid';
                       leaveType = selectedLabel;
@@ -232,16 +296,19 @@ class _ApplyLeave extends State<ApplyLeave> {
                           border: Border.all(color: Colors.grey),
                           borderRadius: BorderRadius.circular(20.0),
                         ),
-                        child: const Padding(
-                          padding:
-                              EdgeInsets.symmetric(horizontal: 20, vertical: 0),
-                          child: TextField(
-                            decoration: InputDecoration(
-                              border: InputBorder.none,
-                              hintText: 'Enter balance',
-                            ),
-                          ),
-                        ),
+                        child: isDataLoaded
+                            ? Center(
+                                child: Text(
+                                  '${annualLeaveBalance ?? "N/A"}',
+                                  style: const TextStyle(fontSize: 18),
+                                ),
+                              )
+                            : const Center(
+                                child: Text(
+                                  ' ', // or any other loading message
+                                  style: TextStyle(fontSize: 18),
+                                ),
+                              ),
                       ),
                     ],
                   ),
@@ -276,7 +343,7 @@ class _ApplyLeave extends State<ApplyLeave> {
                           child: AbsorbPointer(
                             child: Padding(
                               padding: EdgeInsets.symmetric(
-                                  horizontal: 20, vertical: 0),
+                                  horizontal: 32, vertical: 0),
                               child: TextFormField(
                                 decoration: InputDecoration(
                                   hintText: 'Select Date',
@@ -291,9 +358,10 @@ class _ApplyLeave extends State<ApplyLeave> {
                                 onSaved: (value) {},
                                 controller: TextEditingController(
                                   text: startDate != null
-                                      ? DateFormat('yyyy-MM-dd').format(startDate!)
+                                      ? DateFormat('yyyy-MM-dd')
+                                          .format(startDate!)
                                       : '',
-                                ), 
+                                ),
                               ),
                             ),
                           ),
@@ -342,7 +410,8 @@ class _ApplyLeave extends State<ApplyLeave> {
                           },
                           child: AbsorbPointer(
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 32, vertical: 0),
                               child: TextFormField(
                                 decoration: const InputDecoration(
                                   hintText: 'Select Date',
@@ -356,9 +425,11 @@ class _ApplyLeave extends State<ApplyLeave> {
                                 },
                                 onSaved: (value) {},
                                 controller: TextEditingController(
-                                  text: endDate != null ? DateFormat('yyyy-MM-dd').format(endDate!)
+                                  text: endDate != null
+                                      ? DateFormat('yyyy-MM-dd')
+                                          .format(endDate!)
                                       : '',
-                                ), 
+                                ),
                               ),
                             ),
                           ),
@@ -390,19 +461,11 @@ class _ApplyLeave extends State<ApplyLeave> {
                           border: Border.all(color: Colors.grey),
                           borderRadius: BorderRadius.circular(20.0),
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 65, vertical: 7),
+                        child: Center(
                           child: Text(
                             '${leaveDay ?? 0}',
                             style: const TextStyle(fontSize: 18),
                           ),
-                          // child: TextField(
-                          //   controller: _leaveDayController,
-                          //   decoration: InputDecoration(
-                          //     border: InputBorder.none,
-                          //     hintText: 'Enter days',
-                          //   ),
-                          // ),
                         ),
                       ),
                     ],
@@ -486,15 +549,47 @@ class _ApplyLeave extends State<ApplyLeave> {
                 //   margin: const EdgeInsets.all(20.0),
                 ElevatedButton(
                   onPressed: () {
-                    // startDate = DateFormat('MM/dd/yyyy')
-                    //     .parse(_startDateController.text);
-                    // endDate =
-                    //     DateFormat('MM/dd/yyyy').parse(_endDateController.text);
-                    // leaveDay = int.parse(_leaveDayController.text);
-                    reason = _reasonController.text;
-                    remark = _remarkController.text;
-                    _createLeave();
-                    setState(() {});
+                    if (startDate == null ||
+                        endDate == null ||
+                        reason == null) {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Empty Space Detected'),
+                          content: const Text(
+                              'Please fill in all the required information'),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                              },
+                              child: const Text('OK'),
+                            ),
+                          ],
+                        ),
+                      );
+                    } else if (leaveDay! > annualLeaveBalance!) {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Invalid Date'),
+                          content: const Text('Your have exceeeded the limit'),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                              },
+                              child: const Text('OK'),
+                            ),
+                          ],
+                        ),
+                      );
+                    } else {
+                      reason = _reasonController.text;
+                      remark = _remarkController.text;
+                      _createLeave();
+                      setState(() {});
+                    }
                   },
                   style: ButtonStyle(
                     shape: MaterialStateProperty.all<RoundedRectangleBorder>(

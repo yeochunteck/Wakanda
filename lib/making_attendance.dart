@@ -98,24 +98,50 @@ class _AttendancePageState extends State<AttendancePage>
   }  
 
   //Announcement
-  Future<void> _postCheckInOutAnnouncement(String title, String content, String companyId) async {
+  
+   Future<int> getLatestAttendAnnouncementNumber(String companyId) async {
     try {
-      DateTime now = DateTime.now();
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance.collection('announcements').get();
 
-      // Add the announcement to Firebase Firestore
-      await FirebaseFirestore.instance.collection('announcements').add({
-        'title': title,
-        'content': content,
-        'timestamp': now,
-        'seen_by_${widget.companyId}': false,
-        'visible_to': [companyId], // Set visible status for the current user
-      });
+      int latestNumber = 0;
 
+      for (QueryDocumentSnapshot document in querySnapshot.docs) {
+        String documentId = document.id;
+        if (documentId.startsWith('Attendance_Announcement_$companyId')) {
+          // Extract the announcement number
+          int number = int.tryParse(documentId.split('_').last) ?? 0;
+          if (number > latestNumber) {
+            latestNumber = number;
+          }
+        }
+      }
+      return latestNumber;
     } catch (e) {
-      print("Error posting announcement: $e");
-      // Handle error if needed
+      print('Error fetching latest announcement number: $e');
+      return 0;
     }
   }
+  
+  Future<void> _postCheckInOutAnnouncement(String title, String content, String companyId) async {
+  try {
+    DateTime now = DateTime.now();
+    int latestAnnouncementNumber = await getLatestAttendAnnouncementNumber(companyId);
+    String documentId = 'Attendance_Announcement_${companyId}_${latestAnnouncementNumber + 1}';
+
+    // Add the announcement to Firebase Firestore
+    await FirebaseFirestore.instance.collection('announcements').doc(documentId).set({
+      'title': title,
+      'content': content,
+      'timestamp': now,
+      'Read_by_${widget.companyId}': false,
+      'visible_to': [companyId], // Set visible status for the current user
+      'announcementType': 'Attendance',
+    });
+  } catch (e) {
+    print("Error posting announcement: $e");
+    // Handle error if needed
+  }
+}
   
   //ListenToDatabase
   void _listenToAttendanceChanges() {
