@@ -20,6 +20,8 @@ class SalaryPage extends StatefulWidget {
 class _SalaryPageState extends State<SalaryPage> {
   final logger = Logger();
   DateTime? _selected = DateTime.now();
+  String? _search;
+  final TextEditingController _searchController = TextEditingController();
 
   // Define the TextEditingController
   TextEditingController monthYearController = TextEditingController();
@@ -33,10 +35,76 @@ class _SalaryPageState extends State<SalaryPage> {
     monthYearController.text = '${now.month}-${now.year}';
   }
 
-  Future<List<Map<String, dynamic>>> _getFilteredUsers() async {
+  // Future<List<Map<String, dynamic>>> _getFilteredUsers() async {
+  //   final List<String> yearMonth = monthYearController.text.split('-');
+  //   final int selectedYear =
+  //       int.parse(yearMonth[1]); // Assuming year comes first in your format
+  //   final int selectedMonth = int.parse(yearMonth[0]);
+
+  //   final DateTime selectedDate =
+  //       DateTime(selectedYear, selectedMonth + 1, 0, 23, 59, 59);
+
+  //   logger.i('Selected Month: $selectedMonth');
+  //   logger.i('Selected Year: $selectedYear');
+  //   logger.i('Selected Date: $selectedDate');
+
+  //   final QuerySnapshot querySnapshot = await _firestore
+  //       .collection('users')
+  //       .where('joiningdate', isLessThanOrEqualTo: selectedDate)
+  //       .get();
+
+  //   final List<Map<String, dynamic>> filteredUsers = [];
+
+  //   for (final QueryDocumentSnapshot userDoc in querySnapshot.docs) {
+  //     final Map<String, dynamic> userData =
+  //         userDoc.data() as Map<String, dynamic>;
+
+  //     // Fetch the 'salaryHistory' subcollection
+  //     final QuerySnapshot salarySnapshot = await _firestore
+  //         .collection('users')
+  //         .doc(userDoc.id)
+  //         .collection('salaryHistory')
+  //         .orderBy('effectiveDate', descending: true)
+  //         .get();
+
+  //     // Iterate over the 'salaryHistory' documents (if any)
+  //     for (final QueryDocumentSnapshot salaryDoc in salarySnapshot.docs) {
+  //       final Map<String, dynamic> salaryData =
+  //           salaryDoc.data() as Map<String, dynamic>;
+
+  //       DateTime effectiveDate = salaryData['effectiveDate'].toDate();
+  //       // Change to UTC+8
+  //       effectiveDate = effectiveDate.add(const Duration(hours: 8));
+  //       logger.i('Effective Date: $effectiveDate');
+  //       logger.i('Current Basic Salary: ${salaryData['basicSalary']}');
+  //       logger.i('EPFNo: ${salaryData['epfNo']}');
+
+  //       logger.i('Selected Date: $selectedDate');
+  //       logger.i('Comparison Result: ${effectiveDate.isBefore(selectedDate)}');
+
+  //       // Assuming 'effectiveDate' is a DateTime field in your salary document
+  //       if (salaryData['effectiveDate'] != null &&
+  //           effectiveDate.isBefore(selectedDate)) {
+  //         logger.i("salaryData['effectiveDate'] $salaryData['effectiveDate']");
+  //         // This salary entry is effective within the selected month
+  //         final num basicSalaryTemp = salaryData['basicSalary'] ?? 0.0;
+  //         userData['basicSalary'] = basicSalaryTemp;
+  //         // widget.basicSalary = basicSalaryTemp;
+  //         logger.i(userData['image']);
+  //         // Add the user data with basic salary to the result list
+  //         filteredUsers.add(userData);
+  //         break; // Break the loop since we found the relevant salary entry
+  //       }
+  //     }
+  //   }
+
+  //   return filteredUsers;
+  // }
+
+  Future<List<Map<String, dynamic>>> _getFilteredUsers(
+      String? searchTerm) async {
     final List<String> yearMonth = monthYearController.text.split('-');
-    final int selectedYear =
-        int.parse(yearMonth[1]); // Assuming year comes first in your format
+    final int selectedYear = int.parse(yearMonth[1]);
     final int selectedMonth = int.parse(yearMonth[0]);
 
     final DateTime selectedDate =
@@ -45,6 +113,7 @@ class _SalaryPageState extends State<SalaryPage> {
     logger.i('Selected Month: $selectedMonth');
     logger.i('Selected Year: $selectedYear');
     logger.i('Selected Date: $selectedDate');
+    logger.i('searchTerm ${searchTerm?.isEmpty}');
 
     final QuerySnapshot querySnapshot = await _firestore
         .collection('users')
@@ -53,45 +122,54 @@ class _SalaryPageState extends State<SalaryPage> {
 
     final List<Map<String, dynamic>> filteredUsers = [];
 
-    for (final QueryDocumentSnapshot userDoc in querySnapshot.docs) {
-      final Map<String, dynamic> userData =
-          userDoc.data() as Map<String, dynamic>;
+    for (var doc in querySnapshot.docs) {
+      final userData = doc.data() as Map<String, dynamic>;
 
-      // Fetch the 'salaryHistory' subcollection
-      final QuerySnapshot salarySnapshot = await _firestore
-          .collection('users')
-          .doc(userDoc.id)
-          .collection('salaryHistory')
-          .orderBy('effectiveDate', descending: true)
-          .get();
+      logger.i('userData in loop: ${userData}');
+      logger.i('doc.id ${doc.id}');
+      final userName = userData['name'].toString();
 
-      // Iterate over the 'salaryHistory' documents (if any)
-      for (final QueryDocumentSnapshot salaryDoc in salarySnapshot.docs) {
-        final Map<String, dynamic> salaryData =
-            salaryDoc.data() as Map<String, dynamic>;
+      // Check if searchTerm is null or empty, or if the userName is exactly equal to the searchTerm
+      if (searchTerm == null ||
+          searchTerm.isEmpty ||
+          userName.contains(searchTerm.toLowerCase())) {
+        // Fetch the 'salaryHistory' subcollection
+        final QuerySnapshot salarySnapshot = await _firestore
+            .collection('users')
+            .doc(doc.id)
+            .collection('salaryHistory')
+            .orderBy('effectiveDate', descending: true)
+            .get();
 
-        DateTime effectiveDate = salaryData['effectiveDate'].toDate();
-        // Change to UTC+8
-        effectiveDate = effectiveDate.add(const Duration(hours: 8));
-        logger.i('Effective Date: $effectiveDate');
-        logger.i('Current Basic Salary: ${salaryData['basicSalary']}');
-        logger.i('EPFNo: ${salaryData['epfNo']}');
+        // Iterate over the 'salaryHistory' documents (if any)
+        for (var salaryDoc in salarySnapshot.docs) {
+          final salaryData = salaryDoc.data() as Map<String, dynamic>;
 
-        logger.i('Selected Date: $selectedDate');
-        logger.i('Comparison Result: ${effectiveDate.isBefore(selectedDate)}');
+          DateTime effectiveDate = salaryData['effectiveDate'].toDate();
+          effectiveDate = effectiveDate.add(const Duration(hours: 8));
+          logger.i('Effective Date: $effectiveDate');
+          logger.i('Current Basic Salary: ${salaryData['basicSalary']}');
+          logger.i('EPFNo: ${salaryData['epfNo']}');
 
-        // Assuming 'effectiveDate' is a DateTime field in your salary document
-        if (salaryData['effectiveDate'] != null &&
-            effectiveDate.isBefore(selectedDate)) {
-          logger.i("salaryData['effectiveDate'] $salaryData['effectiveDate']");
-          // This salary entry is effective within the selected month
-          final num basicSalaryTemp = salaryData['basicSalary'] ?? 0.0;
-          userData['basicSalary'] = basicSalaryTemp;
-          // widget.basicSalary = basicSalaryTemp;
-          logger.i(userData['image']);
-          // Add the user data with basic salary to the result list
-          filteredUsers.add(userData);
-          break; // Break the loop since we found the relevant salary entry
+          logger.i('Selected Date: $selectedDate');
+          logger
+              .i('Comparison Result: ${effectiveDate.isBefore(selectedDate)}');
+
+          logger.i('salaryData last: $salaryData');
+          // Assuming 'effectiveDate' is a DateTime field in your salary document
+          if (salaryData['effectiveDate'] != null &&
+              effectiveDate.isBefore(selectedDate)) {
+            logger
+                .i("salaryData['effectiveDate'] $salaryData['effectiveDate']");
+            // This salary entry is effective within the selected month
+            final num basicSalaryTemp = salaryData['basicSalary'] ?? 0.0;
+            userData['basicSalary'] = basicSalaryTemp;
+            logger.i(userData['image']);
+            // Add the user data with basic salary to the result list
+
+            filteredUsers.add(userData);
+            break; // Break the loop since we found the relevant salary entry
+          }
         }
       }
     }
@@ -122,6 +200,64 @@ class _SalaryPageState extends State<SalaryPage> {
       ),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                // Search Icon
+                GestureDetector(
+                  onTap: () {
+                    // Handle search icon click
+                  },
+                  child: Icon(
+                    Icons.search,
+                    size: 30,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(width: 10),
+
+                // Search TextField
+                Expanded(
+                  child: TextField(
+                    controller: _searchController, // Assign the controller
+                    onChanged: (value) {
+                      // Handle text changes
+                      setState(() {
+                        _search = value;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Type the user name...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+
+                // Clear Button
+                TextButton(
+                  onPressed: () {
+                    // Handle clear button click
+                    setState(() {
+                      _search = null; // Clear the search term
+                      _searchController.clear();
+                    });
+                  },
+                  child: Text(
+                    'Clear',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color.fromRGBO(229, 63, 248, 1),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           // Month and Calendar Icon
           // Padding around the Center widget
           Padding(
@@ -183,10 +319,19 @@ class _SalaryPageState extends State<SalaryPage> {
           // Employee Rectangles
           Expanded(
             child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: _getFilteredUsers(),
+              future: _getFilteredUsers(_search),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
+                  return const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 10), // Adjust the height as needed
+                        Text('Loading...'),
+                      ],
+                    ),
+                  );
                 } else if (snapshot.hasError) {
                   return Center(child: Text('Error: ${snapshot.error}'));
                 } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
