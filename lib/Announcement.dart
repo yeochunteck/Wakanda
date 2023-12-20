@@ -165,7 +165,7 @@ class AnnouncementList extends StatelessWidget {
         }
 
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const CircularProgressIndicator();
+          return const Center(child: CircularProgressIndicator());
         }
 
         List<Widget> announcementWidgets = [];
@@ -397,7 +397,7 @@ class _MakeAnnouncementPageState extends State<MakeAnnouncementPage> {
       appBar: AppBar(
         backgroundColor: const Color.fromARGB(255, 224, 45, 255),
         title: const Text(
-          'Notification Application',
+          'New Notification',
           style: TextStyle(
             fontSize: 22, 
             fontWeight: FontWeight.bold,// Set the font size
@@ -422,13 +422,13 @@ class _MakeAnnouncementPageState extends State<MakeAnnouncementPage> {
           children: [
             TextField(
               controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Announcement Title'),
+              decoration: const InputDecoration(labelText: 'Notification Title'),
             ),
             const SizedBox(height: 10),
             TextField(
               controller: _contentController,
               maxLines: null,
-              decoration: const InputDecoration(labelText: 'Announcement Content'),
+              decoration: const InputDecoration(labelText: 'Notification Content'),
             ),
             const SizedBox(height: 10),
             ElevatedButton(
