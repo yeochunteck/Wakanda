@@ -287,7 +287,25 @@ class AnnouncementDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(title),
+        backgroundColor: const Color.fromARGB(255, 224, 45, 255),
+        title: Text(
+          title,
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+            fontSize: 22
+          ),
+        ),
+        centerTitle: true,
+      leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back,
+            color: Colors.black,
+          ),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -295,10 +313,11 @@ class AnnouncementDetailPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Content:',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              content,
+              style: const TextStyle(
+                fontSize: 18
+              ),
             ),
-            Text(content),
           ],
         ),
       ),
@@ -386,7 +405,6 @@ class _MakeAnnouncementPageState extends State<MakeAnnouncementPage> {
       'visible_to': allCompanyIds, // Set the visible array to all companyId
       'announcementType': 'Company',
     });
-
     // Close the current page and go back to the previous page
     Navigator.pop(context);
   }
@@ -420,17 +438,48 @@ class _MakeAnnouncementPageState extends State<MakeAnnouncementPage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            TextField(
-              controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Notification Title'),
-            ),
             const SizedBox(height: 10),
-            TextField(
-              controller: _contentController,
-              maxLines: null,
-              decoration: const InputDecoration(labelText: 'Notification Content'),
+            Container(
+              width: 400, // Set the width as per your requirement
+              height: 50, // Set the height as per your requirement
+              decoration: BoxDecoration(
+                color: const Color.fromARGB(255, 238, 238, 238),
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(10.0),
+              ),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+                child: TextField(
+                  controller: _titleController,
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    hintText: 'Notification title',
+                  ),
+                ),
+              ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 15), // Add space here
+            Container(
+              width: 400, // Set the width as per your requirement
+              height: 100, // Set the height as per your requirement
+              decoration: BoxDecoration(
+                color: const Color.fromARGB(255, 238, 238, 238),
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(10.0),
+              ),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 0),            
+                child: TextField(
+                  controller: _contentController,
+                  maxLines: null,
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    hintText: 'Notification Content',
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 15), // Add space here
             ElevatedButton(
               onPressed: _postAnnouncement,
               style: ElevatedButton.styleFrom(
