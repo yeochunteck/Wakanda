@@ -1,26 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/main_page.dart';
 import 'package:toggle_switch/toggle_switch.dart';
-import 'package:flutter_application_1/managerPart/checkPendingLeave.dart';
-import 'package:flutter_application_1/managerPart/checkRejectedLeave.dart';
+import 'package:flutter_application_1/managerPart/checkApprovedClaim.dart';
+import 'package:flutter_application_1/managerPart/checkRejectedClaim.dart';
 import 'package:logger/logger.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter_application_1/models/data_model.dart';
+import 'package:flutter_application_1/managerPart/process_PendingClaim_page.dart';
 
-class CheckApprovedLeave extends StatefulWidget {
+class CheckPendingClaim extends StatefulWidget {
   final String companyId;
   final String userPosition;
 
-  CheckApprovedLeave({Key? key, required this.companyId, required this.userPosition})
+  CheckPendingClaim(
+      {Key? key, required this.companyId, required this.userPosition})
       : super(key: key);
 
   @override
-  _CheckApprovedLeave createState() => _CheckApprovedLeave();
+  _CheckPendingClaim createState() => _CheckPendingClaim();
 }
 
-class _CheckApprovedLeave extends State<CheckApprovedLeave> {
+class _CheckPendingClaim extends State<CheckPendingClaim> {
   final logger = Logger();
 
+  // String? userName;
+  // String? leaveType;
+  // double? leaveDay;
+  // DateTime? date;
+  // List<String> userLeaveTypeList = [];
   List<dynamic> userNameList = [];
 
   @override
@@ -28,43 +34,35 @@ class _CheckApprovedLeave extends State<CheckApprovedLeave> {
     super.initState();
 
     // Fetch user data when the page is initialized
-    fetchAllUsersWithLeaveHistory();
+    fetchAllUsersWithLeaveClaim();
   }
 
-  Future<void> fetchAllUsersWithLeaveHistory() async {
+  Future<void> fetchAllUsersWithLeaveClaim() async {
     try {
-      final List<Map<String, dynamic>> allUsersData =
-          await LeaveModel().getUsersWithApprovedLeave();
+      final List<Map<String, dynamic>> allUsersData = await LeaveModel().getUsersWithPendingClaim();
 
       setState(() {
         if (allUsersData.isNotEmpty) {
           userNameList = allUsersData.map((user) {
             final String companyId = user['userData']['companyId'].toString();
             final String name = user['userData']['name'].toString();
-            final String leaveType = user['leaveType'].toString();
-            final double leaveDay = user['leaveDay'] as double;
-            final DateTime startDate = user['startDate'] as DateTime;
-            final DateTime? endDate = user['endDate'] as DateTime?;
-            final String fullORHalf = user['fullORHalf'].toString();
-            final String reason = user['reason'].toString();
-            final String documentId = user['documentId'].toString();
+            final String claimType = user['claimType'].toString();
+            final double claimAmount = user['claimAmount'] as double;
+            final DateTime claimDate = user['claimDate'] as DateTime;
+            final String imageURL = user['imageURL'].toString();
             final String remark = user['remark'].toString();
+            final String documentId = user['documentId'].toString();
 
             final formattedStartDate =
-                "${startDate.year}-${startDate.month}-${startDate.day}";
-            final formattedEndDate = endDate != null
-                ? "${endDate.year}-${endDate.month}-${endDate.day}"
-                : '';
+                "${claimDate.year}-${claimDate.month}-${claimDate.day}";
 
             return {
               'companyId': companyId,
               'name': name,
-              'leaveType': leaveType,
-              'leaveDay': leaveDay,
-              'startDate': formattedStartDate,
-              'endDate': formattedEndDate,
-              'fullORHalf': fullORHalf,
-              'reason': reason,
+              'claimType': claimType,
+              'claimAmount': claimAmount,
+              'claimDate': formattedStartDate,
+              'imageURL': imageURL,
               'remark': remark,
               'documentId': documentId,
             };
@@ -83,7 +81,7 @@ class _CheckApprovedLeave extends State<CheckApprovedLeave> {
       appBar: AppBar(
         backgroundColor: Color.fromARGB(255, 224, 45, 255),
         title: const Text(
-          'Check Leave',
+          'Check Claim',
           style: TextStyle(color: Colors.black),
         ),
         centerTitle: true,
@@ -111,7 +109,7 @@ class _CheckApprovedLeave extends State<CheckApprovedLeave> {
             const SizedBox(height: 20),
             ToggleSwitch(
               minWidth: 150.0,
-              initialLabelIndex: 0,
+              initialLabelIndex: 1,
               cornerRadius: 20.0,
               activeFgColor: Colors.white,
               inactiveBgColor: Colors.white,
@@ -131,12 +129,12 @@ class _CheckApprovedLeave extends State<CheckApprovedLeave> {
                 [Color.fromARGB(255, 224, 45, 255)]
               ],
               onToggle: (index) {
-                if (index == 1) {
+                if (index == 0) {
                   // Navigate to the 'Half' page
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => CheckPendingLeave(
+                        builder: (context) => CheckApprovedClaim(
                               companyId: widget.companyId,
                               userPosition: widget.userPosition,
                             )),
@@ -145,7 +143,7 @@ class _CheckApprovedLeave extends State<CheckApprovedLeave> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => CheckRejectedLeave(
+                        builder: (context) => CheckRejectedClaim(
                               companyId: widget.companyId,
                               userPosition: widget.userPosition,
                             )),
@@ -182,7 +180,7 @@ class _CheckApprovedLeave extends State<CheckApprovedLeave> {
                         children: [
                           const SizedBox(height: 5),
                           const Text(
-                            'Leave Type:',
+                            'Claim Type:',
                             style: TextStyle(
                               color: Colors.black,
                               fontSize: 16.0, // or your preferred font size
@@ -190,7 +188,7 @@ class _CheckApprovedLeave extends State<CheckApprovedLeave> {
                             ), // Set label color
                           ),
                           Text(
-                            '${userNameList[index]['leaveType']}',
+                            '${userNameList[index]['claimType']}',
                             style: const TextStyle(
                               color: Color.fromARGB(255, 224, 45, 255),
                               fontSize: 16.0, // or your preferred font size
@@ -206,7 +204,7 @@ class _CheckApprovedLeave extends State<CheckApprovedLeave> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const Text(
-                                      'Days:',
+                                      'Amount:',
                                       style: TextStyle(
                                         color: Colors.black,
                                         fontSize: 16.0,
@@ -214,7 +212,7 @@ class _CheckApprovedLeave extends State<CheckApprovedLeave> {
                                       ),
                                     ),
                                     Text(
-                                      '${userNameList[index]['leaveDay']}',
+                                      '${userNameList[index]['claimAmount']}',
                                       style: const TextStyle(
                                         color:
                                             Color.fromARGB(255, 224, 45, 255),
@@ -238,7 +236,7 @@ class _CheckApprovedLeave extends State<CheckApprovedLeave> {
                                     ),
                                   ),
                                   Text(
-                                    '${userNameList[index]['startDate']}',
+                                    '${userNameList[index]['claimDate']}',
                                     style: const TextStyle(
                                       color: Color.fromARGB(255, 224, 45, 255),
                                       fontSize: 16.0,
@@ -252,115 +250,15 @@ class _CheckApprovedLeave extends State<CheckApprovedLeave> {
                                     const EdgeInsets.fromLTRB(60, 0, 10, 10),
                                 child: ElevatedButton(
                                   onPressed: () {
-                                    showDialog(
-                                      context: context,
-                                      builder: (context) => AlertDialog(
-                                        title: const Center(
-                                          child: Text('Leave Details'),
-                                        ),
-                                        content: SingleChildScrollView(
-                                          child: Column(
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  const Text(
-                                                    'Type: ',
-                                                    style: TextStyle(
-                                                      fontWeight: FontWeight.bold, 
-                                                    ),
-                                                  ),
-                                                  Text('${userNameList[index]['leaveType']}'),
-                                                ],
-                                              ),
-                                              Row(
-                                                children: [
-                                                  const Text(
-                                                    'Full/Half: ',
-                                                    style: TextStyle(
-                                                      fontWeight: FontWeight.bold, 
-                                                    ),
-                                                  ),
-                                                  Text('${userNameList[index]['fullORHalf']}'),
-                                                ],
-                                              ),
-                                              Row(
-                                                children: [
-                                                  const Text(
-                                                    'Start Date: ',
-                                                    style: TextStyle(
-                                                      fontWeight: FontWeight.bold, 
-                                                    ),
-                                                  ),
-                                                  Text('${userNameList[index]['startDate']}'),
-                                                ],
-                                              ),
-                                              Row(
-                                                children: [
-                                                  const Text(
-                                                    'End Date: ',
-                                                    style: TextStyle(
-                                                      fontWeight: FontWeight.bold, 
-                                                    ),
-                                                  ),
-                                                  Text('${userNameList[index]['endDate']}'),
-                                                ],
-                                              ),
-                                              Row(
-                                                children: [
-                                                  const Text(
-                                                    'Leave Days: ',
-                                                    style: TextStyle(
-                                                      fontWeight: FontWeight.bold, 
-                                                    ),
-                                                  ),
-                                                  Text('${userNameList[index]['leaveDay']}'),
-                                                ],
-                                              ),
-                                              Row(
-                                                children: [
-                                                  const Text(
-                                                    'Reason: ',
-                                                    style: TextStyle(
-                                                      fontWeight: FontWeight.bold, 
-                                                    ),
-                                                  ),
-                                                  Text('${userNameList[index]['reason']}'),
-                                                ],
-                                              ),
-                                              Row(
-                                                children: [
-                                                  const Text(
-                                                    'Remark: ',
-                                                    style: TextStyle(
-                                                      fontWeight: FontWeight.bold, 
-                                                    ),
-                                                  ),
-                                                  Text('${userNameList[index]['remark']}'),
-                                                ],
-                                              ),
-                                              const Row(
-                                                children: [
-                                                  Text(
-                                                    'Status: ',
-                                                    style: TextStyle(
-                                                      fontWeight: FontWeight.bold, 
-                                                    ),
-                                                  ),
-                                                  Text('Approved'),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () {
-                                              Navigator.pop(context);
-                                            },
-                                            child: const Text('OK'),
-                                          ),
-                                        ],
-                                      ),
+                                    final Map<String, dynamic> user = userNameList[index];
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) => processClaim(
+                                                companyId: widget.companyId,
+                                                userPosition: widget.userPosition,
+                                                userNameList: [user],
+                                              )),
                                     );
                                   },
                                   style: ButtonStyle(
@@ -381,7 +279,7 @@ class _CheckApprovedLeave extends State<CheckApprovedLeave> {
                                           242), // Set the background color to blue
                                     ),
                                   ),
-                                  child: const Text('Details'),
+                                  child: const Text('Check'),
                                 ),
                               ),
                             ],
@@ -389,6 +287,8 @@ class _CheckApprovedLeave extends State<CheckApprovedLeave> {
                         ],
                       ),
                       // Add any other information you want to display for each user
+
+                      //Check Button
                     ),
                   );
                 },

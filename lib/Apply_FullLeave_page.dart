@@ -36,7 +36,7 @@ class _ApplyLeave extends State<ApplyLeave> {
   DateTime? endDate;
   double? leaveDay;
   String? reason;
-  String? remark;
+  String remark = '-';
   DateTime selectedDate = DateTime.now();
   String status = 'pending';
   bool isDataLoaded = false;
@@ -44,8 +44,8 @@ class _ApplyLeave extends State<ApplyLeave> {
   Future<void> _selectStartDate(BuildContext context) async {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
+      initialDate: startDate ?? DateTime.now(),
+      firstDate: startDate ?? DateTime.now(),
       lastDate: DateTime(2100),
     );
 
@@ -65,30 +65,48 @@ class _ApplyLeave extends State<ApplyLeave> {
     );
 
     if (pickedDate != null) {
-      if (pickedDate.isAfter(startDate!) ||
-          pickedDate.isAtSameMomentAs(startDate!)) {
-        setState(() {
-          endDate = pickedDate;
-          leaveDay = calculateDateDifference();
-        });
+      if (startDate != null) {
+        if (pickedDate.isAfter(startDate!) ||
+            pickedDate.isAtSameMomentAs(startDate!)) {
+          setState(() {
+            endDate = pickedDate;
+            leaveDay = calculateDateDifference();
+          });
+        } else {
+          // ignore: use_build_context_synchronously
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text('Invalid Date'),
+              content: Text('End date cannot be earlier than start date.'),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
       } else {
         // ignore: use_build_context_synchronously
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: Text('Invalid Date'),
-            content: Text('End date cannot be earlier than start date.'),
+            title: const Text('Invalid Start Date'),
+            content: const Text('Please select start date first.'),
             actions: [
               TextButton(
                 onPressed: () {
                   Navigator.pop(context);
                 },
-                child: Text('OK'),
+                child: const Text('OK'),
               ),
             ],
           ),
-        );
-      }
+        );}
     }
   }
 
@@ -111,7 +129,7 @@ class _ApplyLeave extends State<ApplyLeave> {
       'leaveDay': leaveDay,
       'reason': reason,
       'remark': remark,
-      'status' : status
+      'status': status
     });
 
     // Navigate back to the profile page
@@ -199,7 +217,7 @@ class _ApplyLeave extends State<ApplyLeave> {
 
                 ToggleSwitch(
                   minWidth: 150.0,
-                  initialLabelIndex: 0,
+                  initialLabelIndex: leaveType == 'Annual' ? 0 : 1,
                   cornerRadius: 20.0,
                   activeFgColor: Colors.white,
                   inactiveBgColor: Colors.white,
@@ -329,8 +347,8 @@ class _ApplyLeave extends State<ApplyLeave> {
                         ),
                       ),
                       Container(
-                        width: 150, // Set the width as per your requirement
-                        height: 40, // Set the height as per your requirement
+                        width: 153, // Set the width as per your requirement
+                        height: 45, // Set the height as per your requirement
                         decoration: BoxDecoration(
                           color: const Color.fromARGB(255, 238, 238, 238),
                           border: Border.all(color: Colors.grey),
@@ -366,22 +384,10 @@ class _ApplyLeave extends State<ApplyLeave> {
                             ),
                           ),
                         ),
-                        // child: Padding(
-                        //   padding:
-                        //       EdgeInsets.symmetric(horizontal: 20, vertical: 0),
-                        //   child: TextField(
-                        //     controller: _startDateController,
-                        //     decoration: InputDecoration(
-                        //       border: InputBorder.none,
-                        //       hintText: 'DD/MM/YYYY',
-                        //     ),
-                        //   ),
-                        // ),
                       ),
                     ],
                   ),
                 ),
-
                 // End Date
                 Container(
                   margin: const EdgeInsets.fromLTRB(35, 10, 35, 5),
@@ -397,8 +403,8 @@ class _ApplyLeave extends State<ApplyLeave> {
                         ),
                       ),
                       Container(
-                        width: 150, // Set the width as per your requirement
-                        height: 40, // Set the height as per your requirement
+                        width: 153, // Set the width as per your requirement
+                        height: 45, // Set the height as per your requirement
                         decoration: BoxDecoration(
                           color: const Color.fromARGB(255, 238, 238, 238),
                           border: Border.all(color: Colors.grey),
@@ -540,7 +546,6 @@ class _ApplyLeave extends State<ApplyLeave> {
                         border: InputBorder.none,
                         hintText: 'remark (optimal)',
                       ),
-                      onSubmitted: (value) => remark = value,
                     ),
                   ),
                 ),
@@ -568,12 +573,14 @@ class _ApplyLeave extends State<ApplyLeave> {
                           ],
                         ),
                       );
-                    } else if (leaveDay! > annualLeaveBalance!) {
+                  } else if (leaveType == 'Annual') {
+                      if (leaveDay! > annualLeaveBalance!) {
                       showDialog(
                         context: context,
                         builder: (context) => AlertDialog(
                           title: const Text('Invalid Date'),
-                          content: const Text('Your have exceeeded the limit'),
+             content: const Text(
+                                'Your have exceeeded your annual limit'),
                           actions: [
                             TextButton(
                               onPressed: () {
@@ -585,8 +592,20 @@ class _ApplyLeave extends State<ApplyLeave> {
                         ),
                       );
                     } else {
+                        logger.i('success');
+                        reason = _reasonController.text;
+                        remark = _remarkController.text.isNotEmpty
+                            ? _remarkController.text
+                            : '-';
+                        _createLeave();
+                        setState(() {});
+                      }
+                    } else {
+                      logger.i('success');
                       reason = _reasonController.text;
-                      remark = _remarkController.text;
+                      remark = _remarkController.text.isNotEmpty
+                          ? _remarkController.text
+                          : '-';
                       _createLeave();
                       setState(() {});
                     }

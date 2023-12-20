@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/main_page.dart';
 import 'package:toggle_switch/toggle_switch.dart';
 import 'package:flutter_application_1/managerPart/checkApprovedLeave.dart';
+import 'package:flutter_application_1/managerPart/checkRejectedLeave.dart';
 import 'package:logger/logger.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_application_1/models/data_model.dart';
+import 'package:flutter_application_1/managerPart/process_PendingLeave_page.dart';
 
 class CheckPendingLeave extends StatefulWidget {
   final String companyId;
   final String userPosition;
+  
 
   CheckPendingLeave(
       {Key? key, required this.companyId, required this.userPosition})
@@ -38,25 +41,38 @@ class _CheckPendingLeave extends State<CheckPendingLeave> {
 
   Future<void> fetchAllUsersWithLeaveHistory() async {
     try {
-      final List<Map<String, dynamic>> allUsersData =
-          await LeaveModel().getUsersWithPendingLeave();
+      final List<Map<String, dynamic>> allUsersData = await LeaveModel().getUsersWithPendingLeave();
 
       setState(() {
         if (allUsersData.isNotEmpty) {
           userNameList = allUsersData.map((user) {
+            final String companyId = user['userData']['companyId'].toString();
             final String name = user['userData']['name'].toString();
             final String leaveType = user['leaveType'].toString();
             final double leaveDay = user['leaveDay'] as double;
             final DateTime startDate = user['startDate'] as DateTime;
+            final DateTime? endDate = user['endDate'] as DateTime?;
+            final String fullORHalf = user['fullORHalf'].toString();
+            final String reason = user['reason'].toString();
+            final String remark = user['remark'].toString();
+            final String documentId = user['documentId'].toString();
 
             final formattedStartDate =
                 "${startDate.year}-${startDate.month}-${startDate.day}";
+            final formattedEndDate =
+          endDate != null ? "${endDate.year}-${endDate.month}-${endDate.day}" : '';
 
             return {
+              'companyId': companyId,
               'name': name,
               'leaveType': leaveType,
               'leaveDay': leaveDay,
               'startDate': formattedStartDate,
+              'endDate': formattedEndDate,
+              'fullORHalf': fullORHalf,
+              'reason': reason,
+              'remark': remark,
+              'documentId': documentId,
             };
           }).toList();
         }
@@ -131,6 +147,15 @@ class _CheckPendingLeave extends State<CheckPendingLeave> {
                               userPosition: widget.userPosition,
                             )),
                   );
+                } else if (index == 2) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => CheckRejectedLeave(
+                              companyId: widget.companyId,
+                              userPosition: widget.userPosition,
+                            )),
+                  );
                 }
               },
             ),
@@ -140,7 +165,7 @@ class _CheckPendingLeave extends State<CheckPendingLeave> {
                 itemCount: userNameList.length,
                 itemBuilder: (context, index) {
                   return Container(
-                    height: 160,
+                    height: 170,
                     margin: const EdgeInsets.symmetric(
                         horizontal: 10.0, vertical: 8.0),
                     padding: const EdgeInsets.all(8.0),
@@ -178,7 +203,7 @@ class _CheckPendingLeave extends State<CheckPendingLeave> {
                               fontWeight: FontWeight.bold,
                             ), // Set data color
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 5),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
@@ -233,13 +258,14 @@ class _CheckPendingLeave extends State<CheckPendingLeave> {
                                     const EdgeInsets.fromLTRB(60, 0, 10, 10),
                                 child: ElevatedButton(
                                   onPressed: () {
+                                    final Map<String, dynamic> user = userNameList[index];
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                          builder: (context) => MainPage(
+                                          builder: (context) => processFullLeave(
                                                 companyId: widget.companyId,
-                                                userPosition:
-                                                    widget.userPosition,
+                                                userPosition: widget.userPosition,
+                                                userNameList: [user],
                                               )),
                                     );
                                   },

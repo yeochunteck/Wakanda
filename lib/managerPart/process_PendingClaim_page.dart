@@ -1,18 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/main_page.dart';
-import 'package:flutter_application_1/half_DayLeave_Page.dart';
-import 'package:toggle_switch/toggle_switch.dart';
-import 'package:intl/intl.dart';
 import 'package:logger/logger.dart';
 import 'package:flutter_application_1/models/data_model.dart';
-import 'package:flutter_application_1/managerPart/checkpendingLeave.dart';
+import 'package:flutter_application_1/managerPart/checkpendingClaim.dart';
 
-class processFullLeave extends StatefulWidget {
+class processClaim extends StatefulWidget {
   final String companyId;
   final String userPosition;
   final List<dynamic> userNameList;
 
-  processFullLeave({
+  processClaim({
     Key? key,
     required this.companyId,
     required this.userPosition,
@@ -20,24 +16,21 @@ class processFullLeave extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _processFullLeave createState() => _processFullLeave();
+  _processClaim createState() => _processClaim();
 }
 
 // ignore: must_be_immutable
-class _processFullLeave extends State<processFullLeave> {
+class _processClaim extends State<processClaim> {
   final logger = Logger();
 
   String companyId = '';
   String name = '';
-  String leaveType = '';
-  String fullORHalf = '';
-  String? startDate;
-  String? endDate;
-  double leaveDay = 0;
-  String reason = '';
+  String claimType = '';
+  double claimAmount = 0;
+  String claimDate = '';
   String remark = '';
   String documentId = '';
-  int? annualLeaveBalance;
+  String imageURL = '';
   bool isDataLoaded = false;
 
   @override
@@ -48,51 +41,32 @@ class _processFullLeave extends State<processFullLeave> {
 
     companyId = user['companyId']?.toString() ?? '';
     name = user['name']?.toString() ?? '';
-    leaveType = user['leaveType']?.toString() ?? '';
-    fullORHalf = user['fullORHalf']?.toString() ?? '';
+    claimType = user['claimType']?.toString() ?? '';
     documentId = user['documentId']?.toString() ?? '';
 
     // Check if 'startDate' and 'endDate' are not null before converting
-    startDate = user['startDate']?.toString() ?? '';
-    endDate = user['endDate']?.toString() ?? '';
+    claimDate = user['claimDate']?.toString() ?? '';
 
     // Ensure 'leaveDay' is a double or can be converted to double
-    leaveDay = (user['leaveDay'] as num?)?.toDouble() ?? 0.0;
+    claimAmount = (user['claimAmount'] as num?)?.toDouble() ?? 0.0;
 
-    reason = user['reason']?.toString() ?? '';
     remark = user['remark']?.toString() ?? '';
-
-    fetchUserData(companyId);
+    imageURL = user['imageURL'] ?? '';
   }
 
-  Future<void> _updateLeaveStatus(companyId, documentId, status, balance) async {
-    await LeaveModel().updateLeaveStatusAndBalance(companyId, documentId, status, balance);
+  Future<void> _updateClaimStatus(companyId, documentId, status) async {
+    await LeaveModel()
+        .updateClaimStatusAndBalance(companyId, documentId, status);
 
     // ignore: use_build_context_synchronously
     Navigator.push(
       context,
       MaterialPageRoute(
-          builder: (context) => CheckPendingLeave(
+          builder: (context) => CheckPendingClaim(
                 companyId: widget.companyId,
                 userPosition: widget.userPosition,
               )),
     );
-  }
-
-  Future<void> fetchUserData(companyId) async {
-    try {
-      final userData = await LeaveModel().getUserData(companyId);
-
-      // ignore: unnecessary_null_comparison
-      if (userData != null) {
-        setState(() {
-          annualLeaveBalance = userData['annualLeaveBalance'] ?? '';
-          isDataLoaded = true;
-        });
-      }
-    } catch (e) {
-      logger.e('Error fetching user data: $e');
-    }
   }
 
   @override
@@ -125,7 +99,7 @@ class _processFullLeave extends State<processFullLeave> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   child: const Text(
-                    "Leave Type",
+                    "Claim Type",
                     style: TextStyle(
                         fontSize: 18,
                         color: Color.fromARGB(255, 224, 45, 255),
@@ -145,7 +119,7 @@ class _processFullLeave extends State<processFullLeave> {
                   ),
                   child: Center(
                     child: Text(
-                      leaveType,
+                      claimType,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 18.0,
@@ -155,89 +129,14 @@ class _processFullLeave extends State<processFullLeave> {
                   ),
                 ),
 
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                  child: const Text(
-                    "Full/Half",
-                    style: TextStyle(
-                        fontSize: 18,
-                        color: Color.fromARGB(255, 224, 45, 255),
-                        fontWeight: FontWeight.bold),
-                  ),
-                ),
-
-                Container(
-                  height: 42,
-                  width: 150,
-                  // margin: const EdgeInsets.symmetric(
-                  //     horizontal: 10.0, vertical: 8.0),
-                  padding: const EdgeInsets.all(10.0),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20.0),
-                    color: const Color.fromARGB(255, 224, 45, 255),
-                  ),
-                  child: Center(
-                    child: Text(
-                      fullORHalf,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18.0,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-
-                if (fullORHalf == 'Full')
-                  // Balance Leaves
-                  Container(
-                    margin: const EdgeInsets.fromLTRB(35, 20, 35, 5),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        const Text(
-                          'Balance Annual',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: Color.fromARGB(255, 224, 45, 255),
-                          ),
-                        ),
-                        Container(
-                          width: 150, // Set the width as per your requirement
-                          height: 40, // Set the height as per your requirement
-                          decoration: BoxDecoration(
-                            color: const Color.fromARGB(255, 238, 238, 238),
-                            border: Border.all(color: Colors.grey),
-                            borderRadius: BorderRadius.circular(20.0),
-                          ),
-                          child: isDataLoaded
-                              ? Center(
-                                  child: Text(
-                                    '${annualLeaveBalance ?? "N/A"}',
-                                    style: const TextStyle(fontSize: 18),
-                                  ),
-                                )
-                              : const Center(
-                                  child: Text(
-                                    ' ', // or any other loading message
-                                    style: TextStyle(fontSize: 18),
-                                  ),
-                                ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                // Start Date
+                // claim Date
                 Container(
                   margin: const EdgeInsets.fromLTRB(35, 10, 35, 5),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       const Text(
-                        'Start Date          ',
+                        'Claim Date          ',
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
@@ -254,7 +153,7 @@ class _processFullLeave extends State<processFullLeave> {
                         ),
                         child: Center(
                           child: Text(
-                            '$startDate',
+                            '$claimDate',
                             style: const TextStyle(
                               fontSize: 15,
                               color: Colors.black,
@@ -266,43 +165,6 @@ class _processFullLeave extends State<processFullLeave> {
                   ),
                 ),
 
-                if (fullORHalf == 'Full')
-                  // End Date
-                  Container(
-                    margin: const EdgeInsets.fromLTRB(35, 10, 35, 5),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        const Text(
-                          'End Date          ',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: Color.fromARGB(255, 224, 45, 255),
-                          ),
-                        ),
-                        Container(
-                          width: 150,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: const Color.fromARGB(255, 238, 238, 238),
-                            border: Border.all(color: Colors.grey),
-                            borderRadius: BorderRadius.circular(20.0),
-                          ),
-                          child: Center(
-                            child: Text(
-                              '$endDate',
-                              style: const TextStyle(
-                                fontSize: 15,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
                 // Leave Days
                 Container(
                   margin: const EdgeInsets.fromLTRB(35, 10, 35, 5),
@@ -310,7 +172,7 @@ class _processFullLeave extends State<processFullLeave> {
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       const Text(
-                        'Leave Days      ',
+                        'Amount          ',
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
@@ -329,44 +191,7 @@ class _processFullLeave extends State<processFullLeave> {
                           // margin: const EdgeInsets.symmetric(
                           //     horizontal: 35, vertical: 10),
                           child: Text(
-                            '$leaveDay',
-                            style: const TextStyle(
-                              fontSize: 15,
-                              color: Colors.black,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Reasons
-                Container(
-                  margin: const EdgeInsets.fromLTRB(35, 10, 35, 5),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      const Text(
-                        'Reason              ',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Color.fromARGB(255, 224, 45, 255),
-                        ),
-                      ),
-                      Container(
-                        width: 150,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: const Color.fromARGB(255, 238, 238, 238),
-                          border: Border.all(color: Colors.grey),
-                          borderRadius: BorderRadius.circular(20.0),
-                        ),
-                        child: Container(
-                          margin: const EdgeInsets.fromLTRB(20, 10, 0, 10),
-                          child: Text(
-                            '$reason',
+                            '$claimAmount',
                             style: const TextStyle(
                               fontSize: 15,
                               color: Colors.black,
@@ -410,6 +235,34 @@ class _processFullLeave extends State<processFullLeave> {
                     )),
 
                 const SizedBox(height: 20),
+                //upload Picture
+                Container(
+                  height: 350,
+                  width: 400,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(
+                      color: Colors.blue, 
+                      width: 2.0, 
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: imageURL.isNotEmpty
+                      ? Image.network(
+                          imageURL,
+                          width:
+                              300, // Adjust the width as per your requirement
+                          height:
+                              300, // Adjust the height as per your requirement
+                          fit: BoxFit.cover,
+                        )
+                      : Text(
+                          'No Image Available',
+                          style: TextStyle(fontSize: 20),
+                        ),
+                ),
+
+                const SizedBox(height: 20),
                 Container(
                   margin: EdgeInsets.symmetric(horizontal: 90),
                   child: Row(
@@ -418,10 +271,7 @@ class _processFullLeave extends State<processFullLeave> {
                       ElevatedButton(
                         onPressed: () {
                           logger.i('Approve');
-                          if(leaveType == 'Annual') {
-                            annualLeaveBalance = (annualLeaveBalance! - leaveDay).toInt();
-                          }     
-                          _updateLeaveStatus(companyId, documentId, 'Approved', annualLeaveBalance);
+                          _updateClaimStatus(companyId, documentId, 'Approved');
                         },
                         style: ButtonStyle(
                           shape:
@@ -448,7 +298,7 @@ class _processFullLeave extends State<processFullLeave> {
                       ElevatedButton(
                         onPressed: () {
                           logger.i('Approve');
-                          _updateLeaveStatus(companyId, documentId, 'Rejected', annualLeaveBalance);
+                          _updateClaimStatus(companyId, documentId, 'Rejected');
                         },
                         style: ButtonStyle(
                           shape:

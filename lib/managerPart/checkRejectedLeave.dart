@@ -2,23 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/main_page.dart';
 import 'package:toggle_switch/toggle_switch.dart';
 import 'package:flutter_application_1/managerPart/checkPendingLeave.dart';
-import 'package:flutter_application_1/managerPart/checkRejectedLeave.dart';
+import 'package:flutter_application_1/managerPart/checkApprovedLeave.dart';
 import 'package:logger/logger.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter_application_1/models/data_model.dart';
 
-class CheckApprovedLeave extends StatefulWidget {
+class CheckRejectedLeave extends StatefulWidget {
   final String companyId;
   final String userPosition;
 
-  CheckApprovedLeave({Key? key, required this.companyId, required this.userPosition})
+  CheckRejectedLeave(
+      {Key? key, required this.companyId, required this.userPosition})
       : super(key: key);
 
   @override
-  _CheckApprovedLeave createState() => _CheckApprovedLeave();
+  _CheckRejectedLeave createState() => _CheckRejectedLeave();
 }
 
-class _CheckApprovedLeave extends State<CheckApprovedLeave> {
+class _CheckRejectedLeave extends State<CheckRejectedLeave> {
   final logger = Logger();
 
   List<dynamic> userNameList = [];
@@ -34,7 +34,7 @@ class _CheckApprovedLeave extends State<CheckApprovedLeave> {
   Future<void> fetchAllUsersWithLeaveHistory() async {
     try {
       final List<Map<String, dynamic>> allUsersData =
-          await LeaveModel().getUsersWithApprovedLeave();
+          await LeaveModel().getUsersWithRejectedLeave();
 
       setState(() {
         if (allUsersData.isNotEmpty) {
@@ -111,7 +111,7 @@ class _CheckApprovedLeave extends State<CheckApprovedLeave> {
             const SizedBox(height: 20),
             ToggleSwitch(
               minWidth: 150.0,
-              initialLabelIndex: 0,
+              initialLabelIndex: 2,
               cornerRadius: 20.0,
               activeFgColor: Colors.white,
               inactiveBgColor: Colors.white,
@@ -131,21 +131,21 @@ class _CheckApprovedLeave extends State<CheckApprovedLeave> {
                 [Color.fromARGB(255, 224, 45, 255)]
               ],
               onToggle: (index) {
-                if (index == 1) {
+                if (index == 0) {
                   // Navigate to the 'Half' page
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => CheckPendingLeave(
+                        builder: (context) => CheckApprovedLeave(
                               companyId: widget.companyId,
                               userPosition: widget.userPosition,
                             )),
                   );
-                } else if (index == 2) {
+                } else if (index == 1) {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => CheckRejectedLeave(
+                        builder: (context) => CheckPendingLeave(
                               companyId: widget.companyId,
                               userPosition: widget.userPosition,
                             )),
@@ -346,7 +346,7 @@ class _CheckApprovedLeave extends State<CheckApprovedLeave> {
                                                       fontWeight: FontWeight.bold, 
                                                     ),
                                                   ),
-                                                  Text('Approved'),
+                                                  Text('Rejected'),
                                                 ],
                                               ),
                                             ],
