@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/main_page.dart';
-import 'package:flutter_application_1/half_DayLeave_Page.dart';
-import 'package:toggle_switch/toggle_switch.dart';
-import 'package:intl/intl.dart';
 import 'package:logger/logger.dart';
 import 'package:flutter_application_1/models/data_model.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter_application_1/managerPart/checkpendingLeave.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; //for getting announcement data by Lew1
+import 'package:intl/intl.dart'; //for announcement timestamp by Lew2
 
 class processFullLeave extends StatefulWidget {
   final String companyId;
   final String userPosition;
+  final List<dynamic> userNameList;
 
-  processFullLeave({Key? key, required this.companyId, required this.userPosition})
-      : super(key: key);
+  processFullLeave({
+    Key? key,
+    required this.companyId,
+    required this.userPosition,
+    required this.userNameList,
+  }) : super(key: key);
 
   @override
   _processFullLeave createState() => _processFullLeave();
@@ -22,50 +25,117 @@ class processFullLeave extends StatefulWidget {
 class _processFullLeave extends State<processFullLeave> {
   final logger = Logger();
 
-  List<dynamic> userNameList = [];
+  String companyId = '';
+  String name = '';
+  String leaveType = '';
+  String fullORHalf = '';
+  String? startDate;
+  String? endDate;
+  double leaveDay = 0;
+  String reason = '';
+  String remark = '';
+  String documentId = '';
+  int? annualLeaveBalance;
+  bool isDataLoaded = false;
+
 
   @override
   void initState() {
     super.initState();
+    // Access widget properties in initState
+    final Map<String, dynamic> user = widget.userNameList[0];
 
-    // Fetch user data when the page is initialized
-    fetchAllUsersWithLeaveHistory();
+    companyId = user['companyId']?.toString() ?? '';
+    name = user['name']?.toString() ?? '';
+    leaveType = user['leaveType']?.toString() ?? '';
+    fullORHalf = user['fullORHalf']?.toString() ?? '';
+    documentId = user['documentId']?.toString() ?? '';
+
+    // Check if 'startDate' and 'endDate' are not null before converting
+    startDate = user['startDate']?.toString() ?? '';
+    endDate = user['endDate']?.toString() ?? '';
+
+    // Ensure 'leaveDay' is a double or can be converted to double
+    leaveDay = (user['leaveDay'] as num?)?.toDouble() ?? 0.0;
+
+    reason = user['reason']?.toString() ?? '';
+    remark = user['remark']?.toString() ?? '';
+
+    fetchUserData(companyId);
   }
 
-  Future<void> fetchAllUsersWithLeaveHistory() async {
+    Future<int> getLatestLeaveAnnouncementNumber(String companyId) async { //By Lew3
     try {
-      final List<Map<String, dynamic>> allUsersData =
-          await LeaveModel().getUsersWithPendingLeave();
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance.collection('announcements').get();
 
-      setState(() {
-        if (allUsersData.isNotEmpty) {
-          userNameList = allUsersData.map((user) {
-            final String name = user['userData']['name'].toString();
-            final String leaveType = user['leaveType'].toString();
-            final double leaveDay = user['leaveDay'] as double;
-            final DateTime startDate = user['startDate'] as DateTime;
-            final String reason = user['reason'].toString();
-            final String remark = user['remark'].toString();
-            final String fullORHalf = user['fullORHalf'].toString();
-            final DateTime endDate = user['endDate'] as DateTime;
+      int latestNumber = 0;
 
-            final formattedStartDate =
-                "${startDate.year}-${startDate.month}-${startDate.day}";
-            final formattedEndDate =
-                "${endDate.year}-${endDate.month}-${endDate.day}";
-
-            return {
-              'name': name,
-              'leaveType': leaveType,
-              'leaveDay': leaveDay,
-              'startDate': formattedStartDate,
-              'endDate': formattedEndDate,
-            };
-          }).toList();
+      for (QueryDocumentSnapshot document in querySnapshot.docs) {
+        String documentId = document.id;
+        if (documentId.startsWith('Leave_Announcement_$companyId')) {
+          // Extract the announcement number
+          int number = int.tryParse(documentId.split('_').last) ?? 0;
+          if (number > latestNumber) {
+            latestNumber = number;
+          }
         }
-      });
+      }
+      return latestNumber;
     } catch (e) {
-      logger.e('Error fetching all users with leave history: $e');
+      print('Error fetching latest announcement number: $e');
+      return 0;
+    }
+  }
+
+  Future<void> _postLeaveAnnouncement(String title, String content, String companyId) async { //By Lew
+  try {
+    DateTime now = DateTime.now();
+    int latestAnnouncementNumber = await getLatestLeaveAnnouncementNumber(companyId);
+    String documentId = 'Leave_Announcement_${companyId}_${latestAnnouncementNumber + 1}';
+
+    // Add the announcement to Firebase Firestore
+    await FirebaseFirestore.instance.collection('announcements').doc(documentId).set({
+      'title': title,
+      'content': content,
+      'timestamp': now,
+      'Read_by_${widget.companyId}': false,
+      'visible_to': [companyId], // Set visible status for the current user
+      'announcementType': 'Leave',
+    });
+  } catch (e) {
+    print("Error posting announcement: $e");
+    // Handle error if needed
+  }
+} //Until here Lew3
+  
+
+  Future<void> _updateLeaveStatus(companyId, documentId, status, balance) async {
+    await LeaveModel().updateLeaveStatusAndBalance(companyId, documentId, status, balance);
+
+    // ignore: use_build_context_synchronously
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (context) => CheckPendingLeave(
+                companyId: widget.companyId,
+                userPosition: widget.userPosition,
+              )),
+    );
+  }
+
+  Future<void> fetchUserData(companyId) async {
+    try {
+      final userData = await LeaveModel().getUserData(companyId);
+
+      // ignore: unnecessary_null_comparison
+      if (userData != null) {
+        setState(() {
+          annualLeaveBalance = userData['annualLeaveBalance'] ?? '';
+          isDataLoaded = true;
+        });
+      }
+    } catch (e) {
+      logger.e('Error fetching user data: $e');
     }
   }
 
@@ -75,8 +145,8 @@ class _processFullLeave extends State<processFullLeave> {
         backgroundColor: const Color.fromARGB(255, 255, 255, 255),
         appBar: AppBar(
           backgroundColor: const Color.fromARGB(255, 224, 45, 255),
-          title: const Text(
-            'Leave Application',
+          title: Text(
+            '$name',
             style: TextStyle(color: Colors.black),
           ),
           centerTitle: true,
@@ -86,14 +156,7 @@ class _processFullLeave extends State<processFullLeave> {
               color: Colors.black,
             ),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => MainPage(
-                          companyId: widget.companyId,
-                          userPosition: widget.userPosition,
-                        )),
-              );
+              Navigator.pop(context);
             },
           ),
         ),
@@ -104,7 +167,7 @@ class _processFullLeave extends State<processFullLeave> {
               children: [
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   child: const Text(
                     "Leave Type",
                     style: TextStyle(
@@ -114,39 +177,31 @@ class _processFullLeave extends State<processFullLeave> {
                   ),
                 ),
 
-                ToggleSwitch(
-                  minWidth: 150.0,
-                  initialLabelIndex: 0,
-                  cornerRadius: 20.0,
-                  activeFgColor: Colors.white,
-                  inactiveBgColor: Colors.white,
-                  inactiveFgColor: const Color.fromARGB(255, 224, 45, 255),
-                  borderColor: const [Colors.grey],
-                  borderWidth: 0.5,
-                  totalSwitches: 2,
-                  labels: const ['Annual', 'Unpaid'],
-                  customTextStyles: const [
-                    TextStyle(fontSize: 16.0, fontWeight: FontWeight.w900),
-                    TextStyle(fontSize: 16.0, fontWeight: FontWeight.w900),
-                  ],
-                  activeBgColors: const [
-                    [Color.fromARGB(255, 224, 45, 255)],
-                    [Color.fromARGB(255, 224, 45, 255)]
-                  ],
-                  // onToggle: (index) {
-                  //   if (index == 0) {
-                  //     String selectedLabel = 'Annual';
-                  //     leaveType = selectedLabel;
-                  //   } else if (index == 1) {
-                  //     String selectedLabel = 'Unpaid';
-                  //     leaveType = selectedLabel;
-                  //   }
-                  // },
+                Container(
+                  height: 42,
+                  width: 150,
+                  // margin: const EdgeInsets.symmetric(
+                  //     horizontal: 10.0, vertical: 8.0),
+                  padding: const EdgeInsets.all(10.0),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20.0),
+                    color: const Color.fromARGB(255, 224, 45, 255),
+                  ),
+                  child: Center(
+                    child: Text(
+                      leaveType,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18.0,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ),
 
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                   child: const Text(
                     "Full/Half",
                     style: TextStyle(
@@ -156,80 +211,68 @@ class _processFullLeave extends State<processFullLeave> {
                   ),
                 ),
 
-                ToggleSwitch(
-                  minWidth: 150.0,
-                  initialLabelIndex: 0,
-                  cornerRadius: 20.0,
-                  activeFgColor: Colors.white,
-                  inactiveBgColor: Colors.white,
-                  inactiveFgColor: const Color.fromARGB(255, 224, 45, 255),
-                  borderColor: const [Colors.grey],
-                  borderWidth: 0.5,
-                  totalSwitches: 2,
-                  labels: const ['Full', 'Half'],
-                  customTextStyles: const [
-                    TextStyle(fontSize: 16.0, fontWeight: FontWeight.w900),
-                    TextStyle(fontSize: 16.0, fontWeight: FontWeight.w900),
-                  ],
-                  activeBgColors: const [
-                    [Color.fromARGB(255, 224, 45, 255)],
-                    [Color.fromARGB(255, 224, 45, 255)]
-                  ],
-                  onToggle: (index) {
-                    print('switched to: $index');
-                    if (index == 1) {
-                      // Navigate to the 'Half' page
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => HalfDayLeave(
-                                  companyId: widget.companyId,
-                                  userPosition: widget.userPosition,
-                                )),
-                      );
-                    }
-                  },
-                ),
-
-                // Balance Leaves
                 Container(
-                  margin: const EdgeInsets.fromLTRB(35, 20, 35, 5),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      const Text(
-                        'Balance Annual',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Color.fromARGB(255, 224, 45, 255),
-                        ),
+                  height: 42,
+                  width: 150,
+                  // margin: const EdgeInsets.symmetric(
+                  //     horizontal: 10.0, vertical: 8.0),
+                  padding: const EdgeInsets.all(10.0),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20.0),
+                    color: const Color.fromARGB(255, 224, 45, 255),
+                  ),
+                  child: Center(
+                    child: Text(
+                      fullORHalf,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18.0,
+                        fontWeight: FontWeight.bold,
                       ),
-                      Container(
-                        width: 150, // Set the width as per your requirement
-                        height: 40, // Set the height as per your requirement
-                        decoration: BoxDecoration(
-                          color: const Color.fromARGB(255, 238, 238, 238),
-                          border: Border.all(color: Colors.grey),
-                          borderRadius: BorderRadius.circular(20.0),
-                        ),
-                        // child: isDataLoaded
-                        //     ? Center(
-                        //         child: Text(
-                        //           '${annualLeaveBalance ?? "N/A"}',
-                        //           style: const TextStyle(fontSize: 18),
-                        //         ),
-                        //       )
-                        //     : const Center(
-                        //         child: Text(
-                        //           ' ', // or any other loading message
-                        //           style: TextStyle(fontSize: 18),
-                        //         ),
-                        //       ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
+
+                if (fullORHalf == 'Full')
+                  // Balance Leaves
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(35, 20, 35, 5),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        const Text(
+                          'Balance Annual',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Color.fromARGB(255, 224, 45, 255),
+                          ),
+                        ),
+                        Container(
+                          width: 150, // Set the width as per your requirement
+                          height: 40, // Set the height as per your requirement
+                          decoration: BoxDecoration(
+                            color: const Color.fromARGB(255, 238, 238, 238),
+                            border: Border.all(color: Colors.grey),
+                            borderRadius: BorderRadius.circular(20.0),
+                          ),
+                          child: isDataLoaded
+                              ? Center(
+                                  child: Text(
+                                    '${annualLeaveBalance ?? "N/A"}',
+                                    style: const TextStyle(fontSize: 18),
+                                  ),
+                                )
+                              : const Center(
+                                  child: Text(
+                                    ' ', // or any other loading message
+                                    style: TextStyle(fontSize: 18),
+                                  ),
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
 
                 // Start Date
                 Container(
@@ -246,57 +289,63 @@ class _processFullLeave extends State<processFullLeave> {
                         ),
                       ),
                       Container(
-                        width: 150, // Set the width as per your requirement
-                        height: 40, // Set the height as per your requirement
+                        width: 150,
+                        height: 40,
                         decoration: BoxDecoration(
                           color: const Color.fromARGB(255, 238, 238, 238),
                           border: Border.all(color: Colors.grey),
                           borderRadius: BorderRadius.circular(20.0),
                         ),
-                        child: Text('startDate'),
-                        // child: Padding(
-                        //   padding:
-                        //       EdgeInsets.symmetric(horizontal: 20, vertical: 0),
-                        //   child: TextField(
-                        //     controller: _startDateController,
-                        //     decoration: InputDecoration(
-                        //       border: InputBorder.none,
-                        //       hintText: 'DD/MM/YYYY',
-                        //     ),
-                        //   ),
-                        // ),
+                        child: Center(
+                          child: Text(
+                            '$startDate',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
 
-                // End Date
-                Container(
-                  margin: const EdgeInsets.fromLTRB(35, 10, 35, 5),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      const Text(
-                        'End Date          ',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Color.fromARGB(255, 224, 45, 255),
+                if (fullORHalf == 'Full')
+                  // End Date
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(35, 10, 35, 5),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        const Text(
+                          'End Date          ',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Color.fromARGB(255, 224, 45, 255),
+                          ),
                         ),
-                      ),
-                      Container(
-                        width: 150, // Set the width as per your requirement
-                        height: 40, // Set the height as per your requirement
-                        decoration: BoxDecoration(
-                          color: const Color.fromARGB(255, 238, 238, 238),
-                          border: Border.all(color: Colors.grey),
-                          borderRadius: BorderRadius.circular(20.0),
+                        Container(
+                          width: 150,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: const Color.fromARGB(255, 238, 238, 238),
+                            border: Border.all(color: Colors.grey),
+                            borderRadius: BorderRadius.circular(20.0),
+                          ),
+                          child: Center(
+                            child: Text(
+                              '$endDate',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ),
                         ),
-                        child: Text('endDate'),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
 
                 // Leave Days
                 Container(
@@ -313,19 +362,24 @@ class _processFullLeave extends State<processFullLeave> {
                         ),
                       ),
                       Container(
-                        width: 150, // Set the width as per your requirement
-                        height: 40, // Set the height as per your requirement
+                        width: 150,
+                        height: 40,
                         decoration: BoxDecoration(
                           color: const Color.fromARGB(255, 238, 238, 238),
                           border: Border.all(color: Colors.grey),
                           borderRadius: BorderRadius.circular(20.0),
                         ),
-                        // child: Center(
-                        //   child: Text(
-                        //     '${leaveDay ?? 0}',
-                        //     style: const TextStyle(fontSize: 18),
-                        //   ),
-                        // ),
+                        child: Center(
+                          // margin: const EdgeInsets.symmetric(
+                          //     horizontal: 35, vertical: 10),
+                          child: Text(
+                            '$leaveDay',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -346,22 +400,32 @@ class _processFullLeave extends State<processFullLeave> {
                         ),
                       ),
                       Container(
-                        width: 150, // Set the width as per your requirement
-                        height: 40, // Set the height as per your requirement
+                        width: 150,
+                        height: 40,
                         decoration: BoxDecoration(
                           color: const Color.fromARGB(255, 238, 238, 238),
                           border: Border.all(color: Colors.grey),
                           borderRadius: BorderRadius.circular(20.0),
                         ),
-                        child: Text('MYreason'),
+                        child: Container(
+                          margin: const EdgeInsets.fromLTRB(20, 10, 0, 10),
+                          child: Text(
+                            '$reason',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
 
+                //Remark
                 Container(
                   alignment: Alignment.centerLeft,
-                  margin: const EdgeInsets.fromLTRB(55, 20, 10, 20),
+                  margin: const EdgeInsets.fromLTRB(55, 20, 10, 10),
                   child: const Text(
                     'Remarks',
                     style: TextStyle(
@@ -373,78 +437,104 @@ class _processFullLeave extends State<processFullLeave> {
                 ),
 
                 Container(
-                    width: 300, // Set the width as per your requirement
-                    height: 100, // Set the height as per your requirement
+                    width: 300,
+                    height: 80,
+                    padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
                     decoration: BoxDecoration(
                       color: const Color.fromARGB(255, 238, 238, 238),
                       border: Border.all(color: Colors.grey),
                       borderRadius: BorderRadius.circular(10.0),
                     ),
-                    child: Text('Remarkssss')),
+                    child: Text(
+                      remark,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: Colors.black,
+                      ),
+                    )),
 
-                // Container(
-                //   margin: const EdgeInsets.all(20.0),
-                // ElevatedButton(
-                //   onPressed: () {
-                //     if (startDate == null ||
-                //         endDate == null ||
-                //         reason == null) {
-                //       showDialog(
-                //         context: context,
-                //         builder: (context) => AlertDialog(
-                //           title: const Text('Empty Space Detected'),
-                //           content: const Text(
-                //               'Please fill in all the required information'),
-                //           actions: [
-                //             TextButton(
-                //               onPressed: () {
-                //                 Navigator.pop(context);
-                //               },
-                //               child: const Text('OK'),
-                //             ),
-                //           ],
-                //         ),
-                //       );
-                //     } else if (leaveDay! > annualLeaveBalance!) {
-                //       showDialog(
-                //         context: context,
-                //         builder: (context) => AlertDialog(
-                //           title: const Text('Invalid Date'),
-                //           content: const Text('Your have exceeeded the limit'),
-                //           actions: [
-                //             TextButton(
-                //               onPressed: () {
-                //                 Navigator.pop(context);
-                //               },
-                //               child: const Text('OK'),
-                //             ),
-                //           ],
-                //         ),
-                //       );
-                //     } else {
-                //       reason = _reasonController.text;
-                //       remark = _remarkController.text;
-                //       _createLeave();
-                //       setState(() {});
-                //     }
-                //   },
-                //   style: ButtonStyle(
-                //     shape: MaterialStateProperty.all<RoundedRectangleBorder>(
-                //       RoundedRectangleBorder(
-                //         borderRadius: BorderRadius.circular(
-                //             20.0), // Set the corner radius
-                //       ),
-                //     ),
-                //     fixedSize: MaterialStateProperty.all<Size>(
-                //       const Size(120, 40), // Set the width and height
-                //     ),
-                //     backgroundColor: MaterialStateProperty.all<Color>(
-                //       const Color.fromARGB(255, 224, 45,
-                //           255), // Set the background color to purple
-                //     ),
-                //   ),
-                //   child: const Text('Confirm'),
-                // ),
+                const SizedBox(height: 20),
+                Container(
+                  margin: EdgeInsets.symmetric(horizontal: 90),
+                  child: Row(
+                    children: [
+                      //Approve
+                      ElevatedButton(
+                        onPressed: () {
+                          logger.i('Approve');
+                          if(leaveType == 'Annual') {
+                            annualLeaveBalance = (annualLeaveBalance! - leaveDay).toInt();
+                          }     
+                          _updateLeaveStatus(companyId, documentId, 'Approved', annualLeaveBalance);
+                          String announcementTitle = 'Leave Approved';//By Lew4
+                          if(leaveType == "Annual"){
+                            String announcementContent = 'Your $leaveType leave on $startDate until $endDate has been approved';
+                            _postLeaveAnnouncement(announcementTitle, announcementContent, companyId);
+                          }
+                          else if(leaveType == "Unpaid"){
+                            String announcementContent = 'Your $leaveType leave on $startDate until $endDate has been approved';
+                            _postLeaveAnnouncement(announcementTitle, announcementContent, companyId);
+                          }
+                          //Until Here Lew4
+                        },
+                        style: ButtonStyle(
+                          shape:
+                              MaterialStateProperty.all<RoundedRectangleBorder>(
+                            RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                  20.0), // Set the corner radius
+                            ),
+                          ),
+                          fixedSize: MaterialStateProperty.all<Size>(
+                            const Size(100, 40), // Set the width and height
+                          ),
+                          backgroundColor: MaterialStateProperty.all<Color>(
+                            Color.fromARGB(255, 48, 197,
+                                53), // Set the background color to blue
+                          ),
+                        ),
+                        child: const Text('Approve'),
+                      ),
+
+                      const SizedBox(width: 30),
+
+                      //Reject
+                      ElevatedButton(
+                        onPressed: () {
+                          logger.i('Rejected');
+                          _updateLeaveStatus(companyId, documentId, 'Rejected', annualLeaveBalance);
+                          String announcementTitle = 'Leave Rejected';//By Lew5
+                          if(leaveType == "Annual"){
+                            String announcementContent = 'Your $leaveType leave on $startDate until $endDate has been rejected';
+                            _postLeaveAnnouncement(announcementTitle, announcementContent, companyId);
+                          }
+                          else if(leaveType == "Unpaid"){
+                            String announcementContent = 'Your $leaveType leave on $startDate until $endDate has been rejected';
+                            _postLeaveAnnouncement(announcementTitle, announcementContent, companyId);
+                          }
+                          //Until Here Lew5
+                        },
+                        style: ButtonStyle(
+                          shape:
+                              MaterialStateProperty.all<RoundedRectangleBorder>(
+                            RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                  20.0), // Set the corner radius
+                            ),
+                          ),
+                          fixedSize: MaterialStateProperty.all<Size>(
+                            const Size(100, 40), // Set the width and height
+                          ),
+                          backgroundColor: MaterialStateProperty.all<Color>(
+                            Color.fromARGB(255, 244, 82,
+                                70), // Set the background color to blue
+                          ),
+                        ),
+                        child: const Text('Reject'),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),

@@ -369,7 +369,7 @@ Future<void> _checkInOut() async {
 
       // Post check-in success announcement
       String announcementTitle = 'Check-In Success';
-      String announcementContent = 'User ${widget.companyId} has successfully checked in at ${DateFormat('yyyy-MM-dd hh:mm:ss a').format(DateTime.now())}.';
+      String announcementContent = 'You have successfully checked in at ${DateFormat('yyyy-MM-dd hh:mm:ss a').format(DateTime.now())}.';
       await _postCheckInOutAnnouncement(announcementTitle, announcementContent,widget.companyId);
     } else {
       latestAttendanceDoc = await _getLatestAttendanceDoc();
@@ -385,7 +385,7 @@ Future<void> _checkInOut() async {
 
       // Post check-in success announcement
       String announcementTitle = 'Check-Out Success';
-      String announcementContent = 'User ${widget.companyId} has successfully checked out at ${DateFormat('yyyy-MM-dd hh:mm:ss a').format(DateTime.now())}.';
+      String announcementContent = 'You have successfully checked out at ${DateFormat('yyyy-MM-dd hh:mm:ss a').format(DateTime.now())}.';
       await _postCheckInOutAnnouncement(announcementTitle, announcementContent,widget.companyId);
     }
 
