@@ -452,12 +452,12 @@ class _AttendancePageState extends State<AttendancePage>
 
         latestAttendanceDoc = await _getLatestAttendanceDoc();
 
-        // Post check-in success announcement
-        String announcementTitle = 'Check-In Success';
-        String announcementContent = 'User ${widget.companyId} has successfully checked in at ${DateFormat('hh:mm:ss a').format(DateTime.now())}.';
-        await _postCheckInOutAnnouncement(announcementTitle, announcementContent,widget.companyId);
-      } else {
-        latestAttendanceDoc = await _getLatestAttendanceDoc();
+      // Post check-in success announcement
+      String announcementTitle = 'Check-In Success';
+      String announcementContent = 'You have successfully checked in at ${DateFormat('yyyy-MM-dd hh:mm:ss a').format(DateTime.now())}.';
+      await _postCheckInOutAnnouncement(announcementTitle, announcementContent,widget.companyId);
+    } else {
+      latestAttendanceDoc = await _getLatestAttendanceDoc();
 
         _recentlyCheckOutDoc = await latestAttendanceDoc.get();
 
@@ -1576,31 +1576,3 @@ Widget build(BuildContext context) {
 );
 }
 }
-
-class TopSemiCircleClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-        double radius = 120;
-    
-        Path path = Path();
-        path
-          ..moveTo(size.width / 2, 0)
-          ..arcToPoint(Offset(size.width, size.height),
-              radius: Radius.circular(radius))
-          ..lineTo(0, size.height)
-          ..arcToPoint(
-            Offset(size.width / 2, 0),
-            radius: Radius.circular(radius),
-          )
-          ..close();
-    
-        return path;
-      }
-
-  @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) {
-    return false;
-  }
-}
-
-

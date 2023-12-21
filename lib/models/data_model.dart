@@ -83,6 +83,72 @@ class LeaveModel {
     }
   }
 
+    //Pending Leave Query for specific user by lew
+   Future<List<Map<String, dynamic>>> getLeaveDataForUser(String paraCompanyId) async {
+    try {
+      final QuerySnapshot usersSnapshot =
+          await FirebaseFirestore.instance
+          .collection('users')
+          .where('companyId', isEqualTo: paraCompanyId)
+          .limit(1)
+          .get();
+
+      final List<Map<String, dynamic>> usersWithPendingLeave = [];
+
+      for (final userDoc in usersSnapshot.docs) {
+        final userData = userDoc.data() as Map<String, dynamic>;
+        final String companyId = userData['companyId'];
+
+        // Fetch the 'leaveHistory' subcollection for each user with 'pending' status
+        final QuerySnapshot leaveHistorySnapshot = await FirebaseFirestore
+            .instance
+            .collection('users')
+            .doc(companyId)
+            .collection('leaveHistory')
+            .get();
+
+        final List<Map<String, dynamic>> pendingLeaveRecords =
+            leaveHistorySnapshot.docs.map((leaveDoc) {
+          final Map<String, dynamic> leaveData =
+              leaveDoc.data() as Map<String, dynamic>;
+
+          final Timestamp timestamp = leaveData['startDate'];
+          final DateTime startDate = timestamp.toDate();
+          final Timestamp? timestamp1 = leaveData.containsKey('endDate') ? leaveData['endDate'] : null;
+          final DateTime? endDate = timestamp1?.toDate();
+          final String leaveType = leaveData['leaveType'] ?? '';
+          final double leaveDay = leaveData['leaveDay'] ?? '';
+          final String reason = leaveData['reason'] ?? '';
+          final String remark = leaveData['remark'] ?? '';
+          final String fullORHalf = leaveData['fullORHalf'] ?? '';
+          final String status = leaveData['status']; 
+
+          leaveData['startDate'] = startDate;
+          leaveData['endDate'] = endDate;
+          leaveData['leaveType'] = leaveType;
+          leaveData['leaveDay'] = leaveDay;
+          leaveData['reason'] = reason;
+          leaveData['remark'] = remark;
+          leaveData['fullORHalf'] = fullORHalf;
+          leaveData['status'] = status;
+
+          // Preserve user data in the leave record
+          leaveData['userData'] = userData;
+
+          return leaveData;
+        }).toList();
+
+        usersWithPendingLeave.addAll(pendingLeaveRecords);
+      }
+
+      return usersWithPendingLeave;
+    } catch (e) {
+      logger.e('Error fetching users with pending leave: $e');
+      return [];
+    }
+  }
+
+
   //Pending Leave Query
   Future<List<Map<String, dynamic>>> getUsersWithPendingLeave() async {
     try {
@@ -499,70 +565,4 @@ class LeaveModel {
       rethrow; // Rethrow the exception for the calling code to handle
     }
   }
-
-    //Pending Leave Query for specific user2
-   Future<List<Map<String, dynamic>>> getLeaveDataForUser(String paraCompanyId) async {
-    try {
-      final QuerySnapshot usersSnapshot =
-          await FirebaseFirestore.instance
-          .collection('users')
-          .where('companyId', isEqualTo: paraCompanyId)
-          .limit(1)
-          .get();
-
-      final List<Map<String, dynamic>> usersWithPendingLeave = [];
-
-      for (final userDoc in usersSnapshot.docs) {
-        final userData = userDoc.data() as Map<String, dynamic>;
-        final String companyId = userData['companyId'];
-
-        print("trying query with companyId: $companyId, paraCompanyId: $paraCompanyId");
-        // Fetch the 'leaveHistory' subcollection for each user with 'pending' status
-        final QuerySnapshot leaveHistorySnapshot = await FirebaseFirestore
-            .instance
-            .collection('users')
-            .doc(companyId)
-            .collection('leaveHistory')
-            //.where('status', isEqualTo: 'pending')
-            .get();
-
-        final List<Map<String, dynamic>> pendingLeaveRecords =
-            leaveHistorySnapshot.docs.map((leaveDoc) {
-          final Map<String, dynamic> leaveData =
-              leaveDoc.data() as Map<String, dynamic>;
-
-          final Timestamp timestamp = leaveData['startDate'];
-          final DateTime startDate = timestamp.toDate();
-          final Timestamp? timestamp1 = leaveData.containsKey('endDate') ? leaveData['endDate'] : null;
-          final DateTime? endDate = timestamp1?.toDate();
-          final String leaveType = leaveData['leaveType'] ?? '';
-          final double leaveDay = leaveData['leaveDay'] ?? '';
-          final String reason = leaveData['reason'] ?? '';
-          final String remark = leaveData['remark'] ?? '';
-          final String fullORHalf = leaveData['fullORHalf'] ?? '';
-
-          leaveData['startDate'] = startDate;
-          leaveData['endDate'] = endDate;
-          leaveData['leaveType'] = leaveType;
-          leaveData['leaveDay'] = leaveDay;
-          leaveData['reason'] = reason;
-          leaveData['remark'] = remark;
-          leaveData['fullORHalf'] = fullORHalf;
-
-          // Preserve user data in the leave record
-          leaveData['userData'] = userData;
-
-          return leaveData;
-        }).toList();
-
-        usersWithPendingLeave.addAll(pendingLeaveRecords);
-      }
-
-      return usersWithPendingLeave;
-    } catch (e) {
-      logger.e('Error fetching users with pending leave: $e');
-      return [];
-    }
-  }
-
 }

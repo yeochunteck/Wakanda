@@ -14,7 +14,8 @@ import 'package:flutter_application_1/user_management_page.dart';
 import 'package:flutter_application_1/Apply_FullLeave_page.dart';
 import 'package:flutter_application_1/managerPart/checkPendingLeave.dart';
 import 'package:flutter_application_1/Announcement.dart';
-
+import 'package:flutter_application_1/Apply_Claim_page.dart';
+import 'package:flutter_application_1/managerPart/checkPendingClaim.dart';
 class MainPage extends StatefulWidget {
   final String companyId;
   final String userPosition;
@@ -47,15 +48,6 @@ class _MainPageState extends State<MainPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // title: Text('Main Page'),
-        // title: Container(
-        //   margin: EdgeInsets.only(top: 10), // Adjust the top margin as needed
-        //   child: Image.asset(
-        //     'assets/images/logo.png',
-        //     width: 50,
-        //     height: 50,
-        //   ),
-        // ),
         title: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -139,7 +131,7 @@ class _MainPageState extends State<MainPage> {
                   children: [
                     Icon(Icons.article),
                     SizedBox(width: 10),
-                    Text('Apply Leave'),
+                    Text('Leave page'),
                   ],
                 ),
               ),
@@ -177,14 +169,34 @@ class _MainPageState extends State<MainPage> {
                 },
                 child: const Row(
                   children: [
-                    Icon(Icons.add),
+                    Icon(Icons.holiday_village),
                     SizedBox(width: 10),
                     Text('Check Leave'),
                   ],
                 ),
               ),
+            
             const SizedBox(height: 20),
-                        ElevatedButton(
+            if (widget.userPosition == 'Manager')
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => CheckPendingClaim(companyId: widget.companyId, userPosition: widget.userPosition)),
+                  );
+                },
+                child: const Row(
+                  children: [
+                    Icon(Icons.monetization_on),
+                    SizedBox(width: 10),
+                    Text('Check Claim'),
+                  ],
+                ),
+              ),
+
+            const SizedBox(height: 20),
+            ElevatedButton(
               onPressed: () {
                 Navigator.push(
                   context,
@@ -331,12 +343,22 @@ class MyDrawer extends StatelessWidget {
             onTap: () {
               // Handle navigation to MainPage()
               Navigator.pop(context); // Close the drawer
-               Navigator.push(
+              if(userPosition == 'Manager'){
+                Navigator.push(
+                 context,
+                 MaterialPageRoute(builder: (context) => CheckPendingLeave(
+                            companyId: companyId,
+                            userPosition: userPosition)),
+               );
+              }
+              else{
+                Navigator.push(
                  context,
                  MaterialPageRoute(builder: (context) => LeavePage(
                             companyId: companyId,
                             userPosition: userPosition)),
                );
+              }
             },
           ),
           ListTile(
@@ -350,10 +372,22 @@ class MyDrawer extends StatelessWidget {
             onTap: () {
               // Handle navigation to MainPage()
               Navigator.pop(context); // Close the drawer
-              // Navigator.push(
-              //   context,
-              //   MaterialPageRoute(builder: (context) => MainPage(companyId: widget.companyId, )),
-              // );
+              if(userPosition == 'Manager'){
+                Navigator.push(
+                 context,
+                 MaterialPageRoute(builder: (context) => CheckPendingClaim(
+                            companyId: companyId,
+                            userPosition: userPosition)),
+               );
+              }
+              else{
+                Navigator.push(
+                 context,
+                 MaterialPageRoute(builder: (context) => ClaimPage(
+                            companyId: companyId,
+                            userPosition: userPosition)),
+               );
+              }
             },
           ),
           ListTile(

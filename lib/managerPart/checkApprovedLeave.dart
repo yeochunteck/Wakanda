@@ -4,14 +4,14 @@ import 'package:toggle_switch/toggle_switch.dart';
 import 'package:flutter_application_1/managerPart/checkPendingLeave.dart';
 import 'package:flutter_application_1/managerPart/checkRejectedLeave.dart';
 import 'package:logger/logger.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter_application_1/models/data_model.dart';
 
 class CheckApprovedLeave extends StatefulWidget {
   final String companyId;
   final String userPosition;
 
-  CheckApprovedLeave({Key? key, required this.companyId, required this.userPosition})
+  CheckApprovedLeave(
+      {Key? key, required this.companyId, required this.userPosition})
       : super(key: key);
 
   @override

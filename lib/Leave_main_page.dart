@@ -32,7 +32,6 @@ class _LeavePageState extends State<LeavePage> {
 
   Future<void> fetchSpecificUsersWithLeaveHistory() async {
     try {
-      print('Fetching data for companyId: $companyId');
       final List<Map<String, dynamic>> specificUsersData =
           await LeaveModel().getLeaveDataForUser(companyId);
 
@@ -40,16 +39,19 @@ class _LeavePageState extends State<LeavePage> {
         if (specificUsersData.isNotEmpty) {
           //Pending list Data
           pendingLeaveList = specificUsersData
-            .where((user) {
-              print('User status: ${user['status']}');
-              return user['status'] == 'pending';
-            })
+            .where((user) => user['status'] == 'pending')
             .map((user) {
             return {
               'name': user['userData']['name'].toString(),
               'leaveType': user['leaveType'].toString(),
               'leaveDay': user['leaveDay'] as double,
               'startDate': "${user['startDate'].year}-${user['startDate'].month}-${user['startDate'].day}",
+              'endDate': "${user['endDate'].year}-${user['endDate'].month}-${user['endDate'].day}",
+              'fullORHalf': user['fullORHalf'].toString(),
+              "reason" : user['reason'].toString(),
+              "documentId": user['documentId'].toString(),
+              "remark": user['remark'].toString(),
+              "status": user['status'].toString(),
             };
           }).toList();
           //Approved list data
@@ -61,8 +63,15 @@ class _LeavePageState extends State<LeavePage> {
               'leaveType': user['leaveType'].toString(),
               'leaveDay': user['leaveDay'] as double,
               'startDate': "${user['startDate'].year}-${user['startDate'].month}-${user['startDate'].day}",
+              'endDate': "${user['endDate'].year}-${user['endDate'].month}-${user['endDate'].day}",
+              'fullORHalf': user['fullORHalf'].toString(),
+              "reason" : user['reason'].toString(),
+              "documentId": user['documentId'].toString(),
+              "remark": user['remark'].toString(),
+              "status": user['status'].toString(),
             };
           }).toList();
+          //Rejected list data
           rejectedLeaveList = specificUsersData
               .where((user) => user['status'] == 'Rejected')
               .map((user) {
@@ -71,12 +80,18 @@ class _LeavePageState extends State<LeavePage> {
               'leaveType': user['leaveType'].toString(),
               'leaveDay': user['leaveDay'] as double,
               'startDate': "${user['startDate'].year}-${user['startDate'].month}-${user['startDate'].day}",
+              'endDate': "${user['endDate'].year}-${user['endDate'].month}-${user['endDate'].day}",
+              'fullORHalf': user['fullORHalf'].toString(),
+              "reason" : user['reason'].toString(),
+              "documentId": user['documentId'].toString(),
+              "remark": user['remark'].toString(),
+              "status": user['status'].toString(),
             };
           }).toList();
         } 
       });
     } catch (e) {
-      logger.e('Error fetching all users with leave history: $e');
+      logger.e('Error fetching user with leave history: $e');
     }
   }
 
@@ -247,58 +262,83 @@ class _LeavePageState extends State<LeavePage> {
             ),
           ),
           Expanded(
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: currentLeaveList.length,
-              itemBuilder: (context, index) {
-                return Container(
-                  height: 160,
-                  margin: const EdgeInsets.symmetric(
-                      horizontal: 10.0, vertical: 8.0),
-                  padding: const EdgeInsets.all(8.0),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.black),
-                    borderRadius: BorderRadius.circular(20.0),
-                  ),
-                  child: ListTile(
-                    title: Text(
-                      currentLeaveList[index]['name'],
-                      style: const TextStyle(
-                        color: Color.fromARGB(255, 224, 45, 255),
-                        fontSize: 21.0,
-                        fontWeight: FontWeight.bold,
-                      ),
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: currentLeaveList.length,
+                itemBuilder: (context, index) {
+                  return Container(
+                    height: 160,
+                    margin: const EdgeInsets.symmetric(
+                        horizontal: 10.0, vertical: 8.0),
+                    padding: const EdgeInsets.all(8.0),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.black),
+                      borderRadius: BorderRadius.circular(20.0),
                     ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 5),
-                        const Text(
-                          'Leave Type:',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 16.0,
-                            fontWeight: FontWeight.bold,
-                          ),
+                    child: ListTile(
+                      title: Text(
+                        currentLeaveList[index]['name'],
+                        style: const TextStyle(
+                          color: Color.fromARGB(255, 224, 45, 255),
+                          fontSize: 21.0, // or your preferred font size
+                          fontWeight: FontWeight.bold,
                         ),
-                        Text(
-                          currentLeaveList[index]['leaveType'],
-                          style: const TextStyle(
-                            color: Color.fromARGB(255, 224, 45, 255),
-                            fontSize: 16.0,
-                            fontWeight: FontWeight.bold,
+                      ),
+
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 5),
+                          const Text(
+                            'Leave Type:',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 16.0, // or your preferred font size
+                              fontWeight: FontWeight.bold,
+                            ), // Set label color
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            Expanded(
-                              child: Column(
+                          Text(
+                            '${currentLeaveList[index]['leaveType']}',
+                            style: const TextStyle(
+                              color: Color.fromARGB(255, 224, 45, 255),
+                              fontSize: 16.0, // or your preferred font size
+                              fontWeight: FontWeight.bold,
+                            ), // Set data color
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Days:',
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 16.0,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      '${currentLeaveList[index]['leaveDay']}',
+                                      style: const TextStyle(
+                                        color:
+                                            Color.fromARGB(255, 224, 45, 255),
+                                        fontSize: 16.0,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 20),
+                              Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Text(
-                                    'Days:',
+                                    'Date:',
                                     style: TextStyle(
                                       color: Colors.black,
                                       fontSize: 16.0,
@@ -306,8 +346,7 @@ class _LeavePageState extends State<LeavePage> {
                                     ),
                                   ),
                                   Text(
-                                    currentLeaveList[index]['leaveDay']
-                                        .toString(),
+                                    '${currentLeaveList[index]['startDate']}',
                                     style: const TextStyle(
                                       color: Color.fromARGB(255, 224, 45, 255),
                                       fontSize: 16.0,
@@ -316,38 +355,158 @@ class _LeavePageState extends State<LeavePage> {
                                   ),
                                 ],
                               ),
-                            ),
-                            const SizedBox(width: 20),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Date:',
-                                  style: TextStyle(
-                                    color: Colors.black,
-                                    fontSize: 16.0,
-                                    fontWeight: FontWeight.bold,
+                              Container(
+                                margin:
+                                    const EdgeInsets.fromLTRB(60, 0, 10, 10),
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: const Center(
+                                          child: Text('Leave Details'),
+                                        ),
+                                        content: SingleChildScrollView(
+                                          child: Column(
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  const Text(
+                                                    'Type: ',
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.bold, 
+                                                    ),
+                                                  ),
+                                                  Text('${currentLeaveList[index]['leaveType']}'),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Row(
+                                                children: [
+                                                  const Text(
+                                                    'Full/Half: ',
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.bold, 
+                                                    ),
+                                                  ),
+                                                  Text('${currentLeaveList[index]['fullORHalf']}'),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Row(
+                                                children: [
+                                                  const Text(
+                                                    'Start Date: ',
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.bold, 
+                                                    ),
+                                                  ),
+                                                  Text('${currentLeaveList[index]['startDate']}'),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Row(
+                                                children: [
+                                                  const Text(
+                                                    'End Date: ',
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.bold, 
+                                                    ),
+                                                  ),
+                                                  Text('${currentLeaveList[index]['endDate']}'),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Row(
+                                                children: [
+                                                  const Text(
+                                                    'Leave Days: ',
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.bold, 
+                                                    ),
+                                                  ),
+                                                  Text('${currentLeaveList[index]['leaveDay']}'),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Row(
+                                                children: [
+                                                  const Text(
+                                                    'Reason: ',
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.bold, 
+                                                    ),
+                                                  ),
+                                                  Text('${currentLeaveList[index]['reason']}'),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Row(
+                                                children: [
+                                                  const Text(
+                                                    'Remark: ',
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.bold, 
+                                                    ),
+                                                  ),
+                                                  Text('${currentLeaveList[index]['remark']}'),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Row(
+                                                children: [
+                                                  const Text(
+                                                    'Status: ',
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.bold, 
+                                                    ),
+                                                  ),
+                                                  Text('${currentLeaveList[index]['status']}'),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () {
+                                              Navigator.pop(context);
+                                            },
+                                            child: const Text('OK'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                  style: ButtonStyle(
+                                    shape: MaterialStateProperty.all<
+                                        RoundedRectangleBorder>(
+                                      RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(
+                                            20.0), // Set the corner radius
+                                      ),
+                                    ),
+                                    fixedSize: MaterialStateProperty.all<Size>(
+                                      const Size(
+                                          100, 50), // Set the width and height
+                                    ),
+                                    backgroundColor:
+                                        MaterialStateProperty.all<Color>(
+                                      const Color.fromARGB(255, 224, 45, 255),
+                                    ),
                                   ),
+                                  child: const Text('Details'),
                                 ),
-                                Text(
-                                  currentLeaveList[index]['startDate'],
-                                  style: const TextStyle(
-                                    color: Color.fromARGB(255, 224, 45, 255),
-                                    fontSize: 16.0,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ],
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
         ],
       ),
     );

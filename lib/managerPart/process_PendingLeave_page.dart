@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/main_page.dart';
-import 'package:flutter_application_1/half_DayLeave_Page.dart';
-import 'package:toggle_switch/toggle_switch.dart';
-import 'package:intl/intl.dart';
 import 'package:logger/logger.dart';
 import 'package:flutter_application_1/models/data_model.dart';
 import 'package:flutter_application_1/managerPart/checkpendingLeave.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; //for getting announcement data by Lew1
+import 'package:intl/intl.dart'; //for announcement timestamp by Lew2
 
 class processFullLeave extends StatefulWidget {
   final String companyId;
@@ -40,6 +38,7 @@ class _processFullLeave extends State<processFullLeave> {
   int? annualLeaveBalance;
   bool isDataLoaded = false;
 
+
   @override
   void initState() {
     super.initState();
@@ -64,6 +63,51 @@ class _processFullLeave extends State<processFullLeave> {
 
     fetchUserData(companyId);
   }
+
+    Future<int> getLatestLeaveAnnouncementNumber(String companyId) async { //By Lew3
+    try {
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance.collection('announcements').get();
+
+      int latestNumber = 0;
+
+      for (QueryDocumentSnapshot document in querySnapshot.docs) {
+        String documentId = document.id;
+        if (documentId.startsWith('Leave_Announcement_$companyId')) {
+          // Extract the announcement number
+          int number = int.tryParse(documentId.split('_').last) ?? 0;
+          if (number > latestNumber) {
+            latestNumber = number;
+          }
+        }
+      }
+      return latestNumber;
+    } catch (e) {
+      print('Error fetching latest announcement number: $e');
+      return 0;
+    }
+  }
+
+  Future<void> _postLeaveAnnouncement(String title, String content, String companyId) async { //By Lew
+  try {
+    DateTime now = DateTime.now();
+    int latestAnnouncementNumber = await getLatestLeaveAnnouncementNumber(companyId);
+    String documentId = 'Leave_Announcement_${companyId}_${latestAnnouncementNumber + 1}';
+
+    // Add the announcement to Firebase Firestore
+    await FirebaseFirestore.instance.collection('announcements').doc(documentId).set({
+      'title': title,
+      'content': content,
+      'timestamp': now,
+      'Read_by_${widget.companyId}': false,
+      'visible_to': [companyId], // Set visible status for the current user
+      'announcementType': 'Leave',
+    });
+  } catch (e) {
+    print("Error posting announcement: $e");
+    // Handle error if needed
+  }
+} //Until here Lew3
+  
 
   Future<void> _updateLeaveStatus(companyId, documentId, status, balance) async {
     await LeaveModel().updateLeaveStatusAndBalance(companyId, documentId, status, balance);
@@ -422,6 +466,16 @@ class _processFullLeave extends State<processFullLeave> {
                             annualLeaveBalance = (annualLeaveBalance! - leaveDay).toInt();
                           }     
                           _updateLeaveStatus(companyId, documentId, 'Approved', annualLeaveBalance);
+                          String announcementTitle = 'Leave Approved';//By Lew4
+                          if(leaveType == "Annual"){
+                            String announcementContent = 'Your $leaveType leave on $startDate until $endDate has been approved';
+                            _postLeaveAnnouncement(announcementTitle, announcementContent, companyId);
+                          }
+                          else if(leaveType == "Unpaid"){
+                            String announcementContent = 'Your $leaveType leave on $startDate until $endDate has been approved';
+                            _postLeaveAnnouncement(announcementTitle, announcementContent, companyId);
+                          }
+                          //Until Here Lew4
                         },
                         style: ButtonStyle(
                           shape:
@@ -447,8 +501,18 @@ class _processFullLeave extends State<processFullLeave> {
                       //Reject
                       ElevatedButton(
                         onPressed: () {
-                          logger.i('Approve');
+                          logger.i('Rejected');
                           _updateLeaveStatus(companyId, documentId, 'Rejected', annualLeaveBalance);
+                          String announcementTitle = 'Leave Rejected';//By Lew5
+                          if(leaveType == "Annual"){
+                            String announcementContent = 'Your $leaveType leave on $startDate until $endDate has been rejected';
+                            _postLeaveAnnouncement(announcementTitle, announcementContent, companyId);
+                          }
+                          else if(leaveType == "Unpaid"){
+                            String announcementContent = 'Your $leaveType leave on $startDate until $endDate has been rejected';
+                            _postLeaveAnnouncement(announcementTitle, announcementContent, companyId);
+                          }
+                          //Until Here Lew5
                         },
                         style: ButtonStyle(
                           shape:

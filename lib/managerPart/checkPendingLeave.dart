@@ -4,7 +4,6 @@ import 'package:toggle_switch/toggle_switch.dart';
 import 'package:flutter_application_1/managerPart/checkApprovedLeave.dart';
 import 'package:flutter_application_1/managerPart/checkRejectedLeave.dart';
 import 'package:logger/logger.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter_application_1/models/data_model.dart';
 import 'package:flutter_application_1/managerPart/process_PendingLeave_page.dart';
 
@@ -283,7 +282,8 @@ class _CheckPendingLeave extends State<CheckPendingLeave> {
                                     ),
                                     backgroundColor:
                                         MaterialStateProperty.all<Color>(
-                                      Color.fromARGB(255, 55, 142, 242), // Set the background color to blue
+                                      Color.fromARGB(255, 55, 142,
+                                          242), // Set the background color to blue
                                     ),
                                   ),
                                   child: const Text('Check'),
