@@ -15,12 +15,6 @@ class processFullLeave extends StatefulWidget {
     required this.userPosition,
     required this.userNameList,
   }) : super(key: key);
-  processFullLeave({
-    Key? key,
-    required this.companyId,
-    required this.userPosition,
-    required this.userNameList,
-  }) : super(key: key);
 
   @override
   _processFullLeave createState() => _processFullLeave();

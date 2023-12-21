@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/all_profile_page.dart';
 import 'package:flutter_application_1/Leave_main_page.dart';
+import 'package:flutter_application_1/Claim_main_page.dart';
 import 'package:flutter_application_1/making_attendance.dart';
 import 'package:logger/logger.dart';
 import 'package:flutter_application_1/salary_page.dart';
@@ -10,9 +10,8 @@ import 'package:flutter_application_1/create_user_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_application_1/data/repositories/profile_repository.dart';
 import 'package:flutter_application_1/user_management_page.dart';
-//import 'package:flutter_application_1/Leave_main_page.dart';
-import 'package:flutter_application_1/Apply_FullLeave_page.dart';
 import 'package:flutter_application_1/managerPart/checkPendingLeave.dart';
+import 'package:flutter_application_1/managerPart/checkPendingClaim.dart';
 import 'package:flutter_application_1/Announcement.dart';
 
 class MainPage extends StatefulWidget {
@@ -31,31 +30,10 @@ class _MainPageState extends State<MainPage> {
   final logger = Logger();
   ProfileRepository profileRepository = ProfileRepository();
 
-  // Future<String> fetchName() async {
-  //   try {
-  //     String name =
-  //         await profileRepository.getNameByCompanyId(widget.companyId);
-  //     logger.i('Fetched name: $name');
-  //     return name;
-  //   } catch (e) {
-  //     logger.e('Error fetching name: $e');
-  //     return 'Guest';
-  //   }
-  // }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // title: Text('Main Page'),
-        // title: Container(
-        //   margin: EdgeInsets.only(top: 10), // Adjust the top margin as needed
-        //   child: Image.asset(
-        //     'assets/images/logo.png',
-        //     width: 50,
-        //     height: 50,
-        //   ),
-        // ),
         title: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -287,13 +265,13 @@ class MyDrawer extends StatelessWidget {
             ),
           ),
           ListTile(
-            title: Text(
+            title: const Text(
               'Home',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
               ),
             ),
-            leading: Icon(Icons.home),
+            leading: const Icon(Icons.home),
             onTap: () {
               // Handle navigation to MainPage()
               Navigator.pop(context); // Close the drawer
@@ -304,13 +282,13 @@ class MyDrawer extends StatelessWidget {
             },
           ),
           ListTile(
-            title: Text(
+            title: const Text(
               'Attendance',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
               ),
             ),
-            leading: Icon(Icons.check_circle_outline),
+            leading: const Icon(Icons.check_circle_outline),
             onTap: () {
               // Handle navigation to MainPage()
               Navigator.pop(context); // Close the drawer
@@ -321,49 +299,71 @@ class MyDrawer extends StatelessWidget {
             },
           ),
           ListTile(
-            title: Text(
+            title: const Text(
               'Leave',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
               ),
             ),
-            leading: Icon(Icons.calendar_today),
+            leading: const Icon(Icons.calendar_today),
             onTap: () {
               // Handle navigation to MainPage()
               Navigator.pop(context); // Close the drawer
-               Navigator.push(
+              if(userPosition == 'Manager'){
+                Navigator.push(
+                 context,
+                 MaterialPageRoute(builder: (context) => CheckPendingLeave(
+                            companyId: companyId,
+                            userPosition: userPosition)),
+               );
+              }
+              else{
+                Navigator.push(
                  context,
                  MaterialPageRoute(builder: (context) => LeavePage(
                             companyId: companyId,
                             userPosition: userPosition)),
                );
+              }
             },
           ),
           ListTile(
-            title: Text(
+            title: const Text(
               'Claim',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
               ),
             ),
-            leading: Icon(Icons.request_page),
+            leading: const Icon(Icons.request_page),
             onTap: () {
               // Handle navigation to MainPage()
               Navigator.pop(context); // Close the drawer
-              // Navigator.push(
-              //   context,
-              //   MaterialPageRoute(builder: (context) => MainPage(companyId: widget.companyId, )),
-              // );
+              if(userPosition == 'Manager'){
+                Navigator.push(
+                 context,
+                 MaterialPageRoute(builder: (context) => CheckPendingClaim(
+                            companyId: companyId,
+                            userPosition: userPosition)),
+               );
+              }
+              else{
+                Navigator.push(
+                 context,
+                 MaterialPageRoute(builder: (context) => ClaimPage(
+                            companyId: companyId,
+                            userPosition: userPosition)),
+               );
+              }
             },
           ),
           ListTile(
-            title: Text(
+            title: const Text(
               'Salary',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
               ),
             ),
-            leading: Icon(Icons.attach_money),
+            leading: const Icon(Icons.attach_money),
             onTap: () {
               // Handle navigation to MainPage()
               Navigator.pop(context); // Close the drawer
@@ -374,13 +374,13 @@ class MyDrawer extends StatelessWidget {
             },
           ),
           ListTile(
-            title: Text(
+            title: const Text(
               'Notification',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
               ),
             ),
-            leading: Icon(Icons.notifications),
+            leading: const Icon(Icons.notifications),
             onTap: () {
               // Handle navigation to MainPage()
               Navigator.pop(context); // Close the drawer
