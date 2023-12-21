@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/Leave_main_page.dart';
+import 'package:flutter_application_1/Claim_main_page.dart';
 import 'package:flutter_application_1/making_attendance.dart';
 import 'package:logger/logger.dart';
 import 'package:flutter_application_1/salary_page.dart';
@@ -11,6 +12,8 @@ import 'package:flutter_application_1/managerPart/checkPendingLeave.dart';
 import 'package:flutter_application_1/Announcement.dart';
 import 'package:flutter_application_1/Apply_Claim_page.dart';
 import 'package:flutter_application_1/managerPart/checkPendingClaim.dart';
+
+
 class MainPage extends StatefulWidget {
   final String companyId;
   final String userPosition;
@@ -91,6 +94,24 @@ class _MainPageState extends State<MainPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             // Add more widgets and functionality for your main page here
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const HomePage()),
+                );
+              },
+              child: const Row(
+                children: [
+                  Icon(Icons.logout),
+                  SizedBox(width: 10),
+                  Text('Logout'),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
             if (widget.userPosition != 'Manager')
               ElevatedButton(
                 onPressed: () {
@@ -111,22 +132,6 @@ class _MainPageState extends State<MainPage> {
                 ),
               ),
 
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const HomePage()),
-                );
-              },
-              child: const Row(
-                children: [
-                  Icon(Icons.logout),
-                  SizedBox(width: 10),
-                  Text('Logout'),
-                ],
-              ),
-            ),
 
             const SizedBox(height: 20),
             if (widget.userPosition == 'Manager')
@@ -149,7 +154,7 @@ class _MainPageState extends State<MainPage> {
                 ),
               ),
             
-            const SizedBox(height: 20),
+            //const SizedBox(height: 20),
             if (widget.userPosition == 'Manager')
               ElevatedButton(
                 onPressed: () {
@@ -167,6 +172,26 @@ class _MainPageState extends State<MainPage> {
                   ],
                 ),
               ),
+
+            if (widget.userPosition != 'Manager')
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => ClaimPage(
+                            companyId: widget.companyId,
+                            userPosition: widget.userPosition)),
+                  );
+              },
+              child: const Row(
+                children: [
+                  Icon(Icons.assignment),
+                  SizedBox(width: 10),
+                  Text('Claim Page'),
+                ],
+              ),
+            ),
 
             const SizedBox(height: 20),
             ElevatedButton(

@@ -3,7 +3,6 @@ import 'package:logger/logger.dart';
 import 'package:flutter_application_1/models/data_model.dart';
 import 'package:flutter_application_1/managerPart/checkPendingClaim.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; //for getting announcement data by Lew1
-import 'package:intl/intl.dart'; //for announcement timestamp by Lew2
 
 class processClaim extends StatefulWidget {
   final String companyId;
@@ -54,6 +53,50 @@ class _processClaim extends State<processClaim> {
 
     remark = user['remark']?.toString() ?? '';
     imageURL = user['imageURL'] ?? '';
+  }
+
+  Future<int> getLatestClaimAnnouncementNumber(String companyId) async { //By Lew2
+    try {
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance.collection('announcements').get();
+
+      int latestNumber = 0;
+
+      for (QueryDocumentSnapshot document in querySnapshot.docs) {
+        String documentId = document.id;
+        if (documentId.startsWith('Claim_Announcement_$companyId')) {
+          // Extract the announcement number
+          int number = int.tryParse(documentId.split('_').last) ?? 0;
+          if (number > latestNumber) {
+            latestNumber = number;
+          }
+        }
+      }
+      return latestNumber;
+    } catch (e) {
+      print('Error fetching latest announcement number: $e');
+      return 0;
+    }
+  }
+
+  Future<void> _postClaimAnnouncement(String title, String content, String companyId) async { 
+  try {
+    DateTime now = DateTime.now();
+    int latestAnnouncementNumber = await getLatestClaimAnnouncementNumber(companyId);
+    String documentId = 'Claim_Announcement_${companyId}_${latestAnnouncementNumber + 1}';
+
+    // Add the announcement to Firebase Firestore
+    await FirebaseFirestore.instance.collection('announcements').doc(documentId).set({
+      'title': title,
+      'content': content,
+      'timestamp': now,
+      'Read_by_${widget.companyId}': false,
+      'visible_to': [companyId], // Set visible status for the current user
+      'announcementType': 'Claim',
+    });
+  } catch (e) {
+      print("Error posting announcement: $e");
+      // Handle error if needed
+    }//Until here Lew2
   }
 
   Future<void> _updateClaimStatus(companyId, documentId, status) async {
@@ -274,9 +317,9 @@ class _processClaim extends State<processClaim> {
                         onPressed: () {
                           logger.i('Approve');
                           _updateClaimStatus(companyId, documentId, 'Approved');
-                          String announcementTitle = 'Claim Approved';//By Lew
-                          // String announcementContent = 'Your claim on $startDate until $endDate has been approved';
-                          //   _postApproveLeaveAnnouncement(announcementTitle, announcementContent, companyId);
+                          String announcementTitle = 'Claim Approved';//By Lew3
+                          String announcementContent = 'Your $claimType claim on $claimDate has been approved';
+                          _postClaimAnnouncement(announcementTitle, announcementContent, companyId);//Until Here Lew3
                         },
                         style: ButtonStyle(
                           shape:
@@ -299,11 +342,14 @@ class _processClaim extends State<processClaim> {
 
                       const SizedBox(width: 30),
 
-                      //Reject
+                      //Rejected
                       ElevatedButton(
                         onPressed: () {
-                          logger.i('Approve');
+                          logger.i('Rejected');
                           _updateClaimStatus(companyId, documentId, 'Rejected');
+                          String announcementTitle = 'Claim Rejected';//By Lew4
+                          String announcementContent = 'Your $claimType claim on $claimDate has been rejected';
+                          _postClaimAnnouncement(announcementTitle, announcementContent, companyId);//Until Here Lew4
                         },
                         style: ButtonStyle(
                           shape:
