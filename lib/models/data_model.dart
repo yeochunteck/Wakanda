@@ -44,6 +44,7 @@ class LeaveModel {
     }
   }
 
+  //Create claim
   Future<void> createClaim(
       String companyId, Map<String, dynamic> claimInfo) async {
     try {
@@ -83,7 +84,7 @@ class LeaveModel {
     }
   }
 
-    //Pending Leave Query for specific user by lew
+  //All Leave Query for specific user by lew1
    Future<List<Map<String, dynamic>>> getLeaveDataForUser(String paraCompanyId) async {
     try {
       final QuerySnapshot usersSnapshot =
@@ -93,13 +94,13 @@ class LeaveModel {
           .limit(1)
           .get();
 
-      final List<Map<String, dynamic>> usersWithPendingLeave = [];
+      final List<Map<String, dynamic>> usersWithLeave = [];
 
       for (final userDoc in usersSnapshot.docs) {
         final userData = userDoc.data() as Map<String, dynamic>;
         final String companyId = userData['companyId'];
 
-        // Fetch the 'leaveHistory' subcollection for each user with 'pending' status
+        // Fetch the 'leaveHistory' subcollection for specific user 
         final QuerySnapshot leaveHistorySnapshot = await FirebaseFirestore
             .instance
             .collection('users')
@@ -107,7 +108,7 @@ class LeaveModel {
             .collection('leaveHistory')
             .get();
 
-        final List<Map<String, dynamic>> pendingLeaveRecords =
+        final List<Map<String, dynamic>> leaveRecords =
             leaveHistorySnapshot.docs.map((leaveDoc) {
           final Map<String, dynamic> leaveData =
               leaveDoc.data() as Map<String, dynamic>;
@@ -138,16 +139,16 @@ class LeaveModel {
           return leaveData;
         }).toList();
 
-        usersWithPendingLeave.addAll(pendingLeaveRecords);
+        usersWithLeave.addAll(leaveRecords);
       }
 
-      return usersWithPendingLeave;
+      return usersWithLeave;
     } catch (e) {
-      logger.e('Error fetching users with pending leave: $e');
+      logger.e('Error fetching users withleave: $e');
       return [];
     }
   }
-
+  //Until here Lew1
 
   //Pending Leave Query
   Future<List<Map<String, dynamic>>> getUsersWithPendingLeave() async {
@@ -225,7 +226,7 @@ class LeaveModel {
         final userData = userDoc.data() as Map<String, dynamic>;
         final String companyId = userData['companyId'];
 
-        // Fetch the 'leaveHistory' subcollection for each user with 'pending' status
+        // Fetch the 'leaveHistory' subcollection for each user with 'Approved' status
         final QuerySnapshot leaveHistorySnapshot = await FirebaseFirestore
             .instance
             .collection('users')
@@ -276,7 +277,7 @@ class LeaveModel {
     }
   }
 
-  //Approved Leave Query
+  //Rejected Leave Query
   Future<List<Map<String, dynamic>>> getUsersWithRejectedLeave() async {
     try {
       final QuerySnapshot usersSnapshot =
@@ -288,7 +289,7 @@ class LeaveModel {
         final userData = userDoc.data() as Map<String, dynamic>;
         final String companyId = userData['companyId'];
 
-        // Fetch the 'leaveHistory' subcollection for each user with 'pending' status
+        // Fetch the 'leaveHistory' subcollection for each user with 'Rejected' status
         final QuerySnapshot leaveHistorySnapshot = await FirebaseFirestore
             .instance
             .collection('users')
@@ -368,6 +369,65 @@ class LeaveModel {
     }
   }
 
+    //All claim Query for specific user by lew2
+   Future<List<Map<String, dynamic>>> getClaimDataForUser(String paraCompanyId) async {
+    try {
+      final QuerySnapshot usersSnapshot =
+          await FirebaseFirestore.instance
+          .collection('users')
+          .where('companyId', isEqualTo: paraCompanyId)
+          .limit(1)
+          .get();
+
+      final List<Map<String, dynamic>> usersWithClaim= [];
+
+      for (final userDoc in usersSnapshot.docs) {
+        final userData = userDoc.data() as Map<String, dynamic>;
+        final String companyId = userData['companyId'];
+
+        // Fetch the 'claimHistory' subcollection for specific user 
+        final QuerySnapshot claimHistorySnapshot = await FirebaseFirestore
+            .instance
+            .collection('users')
+            .doc(companyId)
+            .collection('claimHistory')//subcollection: claimHistory from collection: users
+            .get();
+
+        final List<Map<String, dynamic>> claimRecords =
+            claimHistorySnapshot.docs.map((claimDoc) {
+          final Map<String, dynamic> claimData =
+              claimDoc.data() as Map<String, dynamic>;
+
+          final Timestamp timestamp = claimData['claimDate'];
+          final DateTime claimDate = timestamp.toDate();
+          final String claimType = claimData['claimType'] ?? '';
+          final double claimAmount = claimData['claimAmount'] ?? '';
+          final String remark = claimData['remark'] ?? '';
+          final String imageURL = claimData['image'] ?? '';
+
+          claimData['claimDate'] = claimDate;
+          claimData['claimType'] = claimType;
+          claimData['claimAmount'] = claimAmount;
+          claimData['remark'] = remark;
+          claimData['imageURL'] = imageURL;
+
+          // Preserve user data in the claim record
+          claimData['userData'] = userData;
+
+          return claimData;
+        }).toList();
+
+        usersWithClaim.addAll(claimRecords);
+      }
+
+      return usersWithClaim;
+    } catch (e) {
+      logger.e('Error fetching users with claim: $e');
+      return [];
+    }
+  }
+  //Until here Lew2
+
   //Pending Claim Query
   Future<List<Map<String, dynamic>>> getUsersWithPendingClaim() async {
     try {
@@ -407,7 +467,7 @@ class LeaveModel {
           claimData['remark'] = remark;
           claimData['imageURL'] = imageURL;
 
-          // Preserve user data in the leave record
+          // Preserve user data in the claim record
           claimData['userData'] = userData;
 
           // Add the document ID to the leaveData

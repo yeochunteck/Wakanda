@@ -21,12 +21,6 @@ class CheckPendingClaim extends StatefulWidget {
 
 class _CheckPendingClaim extends State<CheckPendingClaim> {
   final logger = Logger();
-
-  // String? userName;
-  // String? leaveType;
-  // double? leaveDay;
-  // DateTime? date;
-  // List<String> userLeaveTypeList = [];
   List<dynamic> userNameList = [];
 
   @override

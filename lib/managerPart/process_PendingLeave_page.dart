@@ -87,7 +87,7 @@ class _processFullLeave extends State<processFullLeave> {
     }
   }
 
-  Future<void> _postLeaveAnnouncement(String title, String content, String companyId) async { //By Lew
+  Future<void> _postLeaveAnnouncement(String title, String content, String companyId) async { 
   try {
     DateTime now = DateTime.now();
     int latestAnnouncementNumber = await getLatestLeaveAnnouncementNumber(companyId);
@@ -103,10 +103,10 @@ class _processFullLeave extends State<processFullLeave> {
       'announcementType': 'Leave',
     });
   } catch (e) {
-    print("Error posting announcement: $e");
-    // Handle error if needed
-  }
-} //Until here Lew3
+      print("Error posting announcement: $e");
+      // Handle error if needed
+  }//Until here Lew2
+} 
   
 
   Future<void> _updateLeaveStatus(companyId, documentId, status, balance) async {
@@ -474,8 +474,7 @@ class _processFullLeave extends State<processFullLeave> {
                           else if(leaveType == "Unpaid"){
                             String announcementContent = 'Your $leaveType leave on $startDate until $endDate has been approved';
                             _postLeaveAnnouncement(announcementTitle, announcementContent, companyId);
-                          }
-                          //Until Here Lew4
+                          }//Until Here Lew3
                         },
                         style: ButtonStyle(
                           shape:
@@ -503,7 +502,7 @@ class _processFullLeave extends State<processFullLeave> {
                         onPressed: () {
                           logger.i('Rejected');
                           _updateLeaveStatus(companyId, documentId, 'Rejected', annualLeaveBalance);
-                          String announcementTitle = 'Leave Rejected';//By Lew5
+                          String announcementTitle = 'Leave Rejected';//By Lew4
                           if(leaveType == "Annual"){
                             String announcementContent = 'Your $leaveType leave on $startDate until $endDate has been rejected';
                             _postLeaveAnnouncement(announcementTitle, announcementContent, companyId);
@@ -511,8 +510,7 @@ class _processFullLeave extends State<processFullLeave> {
                           else if(leaveType == "Unpaid"){
                             String announcementContent = 'Your $leaveType leave on $startDate until $endDate has been rejected';
                             _postLeaveAnnouncement(announcementTitle, announcementContent, companyId);
-                          }
-                          //Until Here Lew5
+                          }//Until Here Lew4                         
                         },
                         style: ButtonStyle(
                           shape:

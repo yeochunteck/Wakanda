@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/all_profile_page.dart';
 import 'package:flutter_application_1/Leave_main_page.dart';
+import 'package:flutter_application_1/Claim_main_page.dart';
 import 'package:flutter_application_1/making_attendance.dart';
 import 'package:logger/logger.dart';
 import 'package:flutter_application_1/salary_page.dart';
@@ -13,9 +13,9 @@ import 'package:flutter_application_1/user_management_page.dart';
 //import 'package:flutter_application_1/Leave_main_page.dart';
 import 'package:flutter_application_1/Apply_FullLeave_page.dart';
 import 'package:flutter_application_1/managerPart/checkPendingLeave.dart';
-import 'package:flutter_application_1/Announcement.dart';
-import 'package:flutter_application_1/Apply_Claim_page.dart';
 import 'package:flutter_application_1/managerPart/checkPendingClaim.dart';
+import 'package:flutter_application_1/Announcement.dart';
+
 class MainPage extends StatefulWidget {
   final String companyId;
   final String userPosition;
@@ -31,18 +31,6 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   final logger = Logger();
   ProfileRepository profileRepository = ProfileRepository();
-
-  // Future<String> fetchName() async {
-  //   try {
-  //     String name =
-  //         await profileRepository.getNameByCompanyId(widget.companyId);
-  //     logger.i('Fetched name: $name');
-  //     return name;
-  //   } catch (e) {
-  //     logger.e('Error fetching name: $e');
-  //     return 'Guest';
-  //   }
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -131,7 +119,7 @@ class _MainPageState extends State<MainPage> {
                   children: [
                     Icon(Icons.article),
                     SizedBox(width: 10),
-                    Text('Leave page'),
+                    Text('Apply Leave'),
                   ],
                 ),
               ),
@@ -169,34 +157,14 @@ class _MainPageState extends State<MainPage> {
                 },
                 child: const Row(
                   children: [
-                    Icon(Icons.holiday_village),
+                    Icon(Icons.add),
                     SizedBox(width: 10),
                     Text('Check Leave'),
                   ],
                 ),
               ),
-            
             const SizedBox(height: 20),
-            if (widget.userPosition == 'Manager')
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => CheckPendingClaim(companyId: widget.companyId, userPosition: widget.userPosition)),
-                  );
-                },
-                child: const Row(
-                  children: [
-                    Icon(Icons.monetization_on),
-                    SizedBox(width: 10),
-                    Text('Check Claim'),
-                  ],
-                ),
-              ),
-
-            const SizedBox(height: 20),
-            ElevatedButton(
+                        ElevatedButton(
               onPressed: () {
                 Navigator.push(
                   context,
@@ -299,13 +267,13 @@ class MyDrawer extends StatelessWidget {
             ),
           ),
           ListTile(
-            title: Text(
+            title: const Text(
               'Home',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
               ),
             ),
-            leading: Icon(Icons.home),
+            leading: const Icon(Icons.home),
             onTap: () {
               // Handle navigation to MainPage()
               Navigator.pop(context); // Close the drawer
@@ -316,13 +284,13 @@ class MyDrawer extends StatelessWidget {
             },
           ),
           ListTile(
-            title: Text(
+            title: const Text(
               'Attendance',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
               ),
             ),
-            leading: Icon(Icons.check_circle_outline),
+            leading: const Icon(Icons.check_circle_outline),
             onTap: () {
               // Handle navigation to MainPage()
               Navigator.pop(context); // Close the drawer
@@ -333,13 +301,13 @@ class MyDrawer extends StatelessWidget {
             },
           ),
           ListTile(
-            title: Text(
+            title: const Text(
               'Leave',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
               ),
             ),
-            leading: Icon(Icons.calendar_today),
+            leading: const Icon(Icons.calendar_today),
             onTap: () {
               // Handle navigation to MainPage()
               Navigator.pop(context); // Close the drawer
@@ -362,13 +330,13 @@ class MyDrawer extends StatelessWidget {
             },
           ),
           ListTile(
-            title: Text(
+            title: const Text(
               'Claim',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
               ),
             ),
-            leading: Icon(Icons.request_page),
+            leading: const Icon(Icons.request_page),
             onTap: () {
               // Handle navigation to MainPage()
               Navigator.pop(context); // Close the drawer
@@ -391,13 +359,13 @@ class MyDrawer extends StatelessWidget {
             },
           ),
           ListTile(
-            title: Text(
+            title: const Text(
               'Salary',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
               ),
             ),
-            leading: Icon(Icons.attach_money),
+            leading: const Icon(Icons.attach_money),
             onTap: () {
               // Handle navigation to MainPage()
               Navigator.pop(context); // Close the drawer
@@ -408,13 +376,13 @@ class MyDrawer extends StatelessWidget {
             },
           ),
           ListTile(
-            title: Text(
+            title: const Text(
               'Notification',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
               ),
             ),
-            leading: Icon(Icons.notifications),
+            leading: const Icon(Icons.notifications),
             onTap: () {
               // Handle navigation to MainPage()
               Navigator.pop(context); // Close the drawer

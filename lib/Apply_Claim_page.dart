@@ -131,32 +131,6 @@ class _ApplyClaim extends State<ApplyClaim> {
     );
   }
 
-  
-
-  // @override
-  // void initState() {
-  //   super.initState();
-
-  //   // Fetch user data when the page is initialized
-  //   fetchUserData();
-  // }
-
-  // Future<void> fetchUserData() async {
-  //   try {
-  //     final userData = await LeaveModel().getUserData(widget.companyId);
-
-  //     // ignore: unnecessary_null_comparison
-  //     if (userData != null) {
-  //       setState(() {
-  //         annualLeaveBalance = userData['annualLeaveBalance'] ?? '';
-  //         isDataLoaded = true;
-  //       });
-  //     }
-  //   } catch (e) {
-  //     logger.e('Error fetching user data: $e');
-  //   }
-  // }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
