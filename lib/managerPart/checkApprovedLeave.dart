@@ -70,6 +70,39 @@ class _CheckApprovedLeave extends State<CheckApprovedLeave> {
             };
           }).toList();
         }
+        if (allUsersData.isNotEmpty) {
+          userNameList = allUsersData.map((user) {
+            final String companyId = user['userData']['companyId'].toString();
+            final String name = user['userData']['name'].toString();
+            final String leaveType = user['leaveType'].toString();
+            final double leaveDay = user['leaveDay'] as double;
+            final DateTime startDate = user['startDate'] as DateTime;
+            final DateTime? endDate = user['endDate'] as DateTime?;
+            final String fullORHalf = user['fullORHalf'].toString();
+            final String reason = user['reason'].toString();
+            final String documentId = user['documentId'].toString();
+            final String remark = user['remark'].toString();
+
+            final formattedStartDate =
+                "${startDate.year}-${startDate.month}-${startDate.day}";
+            final formattedEndDate = endDate != null
+                ? "${endDate.year}-${endDate.month}-${endDate.day}"
+                : '';
+
+            return {
+              'companyId': companyId,
+              'name': name,
+              'leaveType': leaveType,
+              'leaveDay': leaveDay,
+              'startDate': formattedStartDate,
+              'endDate': formattedEndDate,
+              'fullORHalf': fullORHalf,
+              'reason': reason,
+              'remark': remark,
+              'documentId': documentId,
+            };
+          }).toList();
+        }
       });
     } catch (e) {
       logger.e('Error fetching all users with leave history: $e');

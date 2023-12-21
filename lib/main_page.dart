@@ -1,25 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/all_profile_page.dart';
 import 'package:flutter_application_1/Leave_main_page.dart';
-import 'package:flutter_application_1/Claim_main_page.dart';
 import 'package:flutter_application_1/making_attendance.dart';
 import 'package:logger/logger.dart';
 import 'package:flutter_application_1/salary_page.dart';
 import 'package:flutter_application_1/login_page.dart';
 import 'package:flutter_application_1/profile_page.dart';
 import 'package:flutter_application_1/create_user_page.dart';
-// import 'package:flutter_application_1/Apply_FullLeave_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_application_1/data/repositories/profile_repository.dart';
+import 'package:flutter_application_1/user_management_page.dart';
+//import 'package:flutter_application_1/Leave_main_page.dart';
+import 'package:flutter_application_1/Apply_FullLeave_page.dart';
 import 'package:flutter_application_1/managerPart/checkPendingLeave.dart';
 import 'package:flutter_application_1/Announcement.dart';
-import 'package:flutter_application_1/Apply_Claim_page.dart';
-import 'package:flutter_application_1/managerPart/checkPendingClaim.dart';
-
 
 class MainPage extends StatefulWidget {
   final String companyId;
   final String userPosition;
+  // final user = FirebaseAuth.instance.currentUser!;
 
-  const MainPage(
-      {Key? key, required this.companyId, required this.userPosition})
+  MainPage({Key? key, required this.companyId, required this.userPosition})
       : super(key: key);
 
   @override
@@ -27,12 +28,34 @@ class MainPage extends StatefulWidget {
 }
 
 class _MainPageState extends State<MainPage> {
-  var logger = Logger();
+  final logger = Logger();
+  ProfileRepository profileRepository = ProfileRepository();
+
+  // Future<String> fetchName() async {
+  //   try {
+  //     String name =
+  //         await profileRepository.getNameByCompanyId(widget.companyId);
+  //     logger.i('Fetched name: $name');
+  //     return name;
+  //   } catch (e) {
+  //     logger.e('Error fetching name: $e');
+  //     return 'Guest';
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        // title: Text('Main Page'),
+        // title: Container(
+        //   margin: EdgeInsets.only(top: 10), // Adjust the top margin as needed
+        //   child: Image.asset(
+        //     'assets/images/logo.png',
+        //     width: 50,
+        //     height: 50,
+        //   ),
+        // ),
         title: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -80,38 +103,27 @@ class _MainPageState extends State<MainPage> {
         leading: Builder(
           builder: (BuildContext context) {
             return IconButton(
-              icon: const Icon(Icons.settings), // Settings icon on the left
+              icon: const Icon(Icons.menu), // Settings icon on the left
               onPressed: () {
-                // Handle settings icon pressed
+                Scaffold.of(context).openDrawer(); // Open the drawer
               },
             );
           },
         ),
         centerTitle: true,
       ),
+      drawer: MyDrawer(
+          companyId: widget.companyId,
+          nameFuture: ProfileRepository().getNameByCompanyId(
+              widget.companyId),
+              userPosition: widget.userPosition
+              ),
+
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             // Add more widgets and functionality for your main page here
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const HomePage()),
-                );
-              },
-              child: const Row(
-                children: [
-                  Icon(Icons.logout),
-                  SizedBox(width: 10),
-                  Text('Logout'),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 20),
             if (widget.userPosition != 'Manager')
               ElevatedButton(
                 onPressed: () {
@@ -127,11 +139,29 @@ class _MainPageState extends State<MainPage> {
                   children: [
                     Icon(Icons.article),
                     SizedBox(width: 10),
-                    Text('Leave page'),
+                    Text('Apply Leave'),
                   ],
                 ),
               ),
 
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                FirebaseAuth.instance.signOut();
+                logger.i('Sign out');
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const HomePage()),
+                );
+              },
+              child: const Row(
+                children: [
+                  Icon(Icons.logout),
+                  SizedBox(width: 10),
+                  Text('Logout'),
+                ],
+              ),
+            ),
 
             const SizedBox(height: 20),
             if (widget.userPosition == 'Manager')
@@ -147,54 +177,14 @@ class _MainPageState extends State<MainPage> {
                 },
                 child: const Row(
                   children: [
-                    Icon(Icons.holiday_village),
+                    Icon(Icons.add),
                     SizedBox(width: 10),
                     Text('Check Leave'),
                   ],
                 ),
               ),
-            
-            //const SizedBox(height: 20),
-            if (widget.userPosition == 'Manager')
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => CheckPendingClaim(companyId: widget.companyId, userPosition: widget.userPosition)),
-                  );
-                },
-                child: const Row(
-                  children: [
-                    Icon(Icons.monetization_on),
-                    SizedBox(width: 10),
-                    Text('Check Claim'),
-                  ],
-                ),
-              ),
-
-            if (widget.userPosition != 'Manager')
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => ClaimPage(
-                            companyId: widget.companyId,
-                            userPosition: widget.userPosition)),
-                  );
-              },
-              child: const Row(
-                children: [
-                  Icon(Icons.assignment),
-                  SizedBox(width: 10),
-                  Text('Claim Page'),
-                ],
-              ),
-            ),
-
             const SizedBox(height: 20),
-            ElevatedButton(
+                        ElevatedButton(
               onPressed: () {
                 Navigator.push(
                   context,
@@ -209,77 +199,216 @@ class _MainPageState extends State<MainPage> {
                 ],
               ),
             ),
-          const SizedBox(height: 20),
-           ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => AnnouncementPage(userPosition: widget.userPosition, companyId: widget.companyId,)),
-                );
-              },
-              child: const Row(
-                children: [
-                  Icon(Icons.announcement),
-                  SizedBox(width: 10),
-                  Text('Announcement'),
-                ],
-              ),
-            ),  
             const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => ApplyClaim(userPosition: widget.userPosition, companyId: widget.companyId,)),
-                );
-              },
-              child: const Row(
-                children: [
-                  Icon(Icons.announcement),
-                  SizedBox(width: 10),
-                  Text('Apply Claim'),
-                ],
+            //If userPosition is Manager then show
+            if (widget.userPosition == 'Manager')
+              ElevatedButton(
+                onPressed: () {
+                  // Navigate to the create new user page
+                  // Replace `CreateNewUserPage` with the actual name of your page
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => CreateUserPage()),
+                  );
+                },
+                child: const Row(
+                  children: [
+                    Icon(Icons.add),
+                    SizedBox(width: 10),
+                    Text('Create New User'),
+                  ],
+                ),
               ),
-            ),
-          const SizedBox(height: 20),
-          // Using ternary operator to conditionally render the 'Create New User' button
-          widget.userPosition == 'Manager'
-              ? ElevatedButton(
-                  onPressed: () {
-                    // Navigate to the create new user page
-                    // Replace `CreateNewUserPage` with the actual name of your page
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => CreateUserPage()),
-                    );
-                  },
-                  child: const Row(
-                    children: [
-                      Icon(Icons.add),
-                      SizedBox(width: 10),
-                      Text('Create New User'),
-                    ],
-                  ),
-                )
-              :ElevatedButton(
-                  onPressed: () {
-                    // Navigate to the create new user page
-                    // Replace `CreateNewUserPage` with the actual name of your page
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => AttendancePage(companyId: widget.companyId)),
-                    );
-                  },
-                  child: const Row(
-                    children: [
-                      Icon(Icons.add),
-                      SizedBox(width: 10),
-                      Text('Making Attendance'),
-                    ],
-                  ),
-                ), // Return an empty container if not a Manager
           ],
         ),
+      ),
+    );
+  }
+}
+
+class MyDrawer extends StatelessWidget {
+  final String companyId;
+  final Future<String> nameFuture;
+  final String userPosition;
+
+  MyDrawer({Key? key, required this.companyId, required this.nameFuture,required this.userPosition})
+      : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: <Widget>[
+          DrawerHeader(
+            decoration: BoxDecoration(
+              color: const Color.fromRGBO(229, 63, 248, 1),
+            ),
+            child: FutureBuilder<String>(
+              future: nameFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 10), // Adjust the height as needed
+                        Text('Loading...'),
+                      ],
+                    ),
+                  );
+                } else if (snapshot.hasError) {
+                  return Text('Error loading name');
+                } else {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(height: 16),
+                      Text(
+                        'Welcome back,',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 16,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        snapshot.data ?? "Guest",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                        ),
+                      ),
+                    ],
+                  );
+                }
+              },
+            ),
+          ),
+          ListTile(
+            title: Text(
+              'Home',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            leading: Icon(Icons.home),
+            onTap: () {
+              // Handle navigation to MainPage()
+              Navigator.pop(context); // Close the drawer
+              // Navigator.push(
+              //   context,
+              //   MaterialPageRoute(builder: (context) => MainPage(companyId: widget.companyId, )),
+              // );
+            },
+          ),
+          ListTile(
+            title: Text(
+              'Attendance',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            leading: Icon(Icons.check_circle_outline),
+            onTap: () {
+              // Handle navigation to MainPage()
+              Navigator.pop(context); // Close the drawer
+               Navigator.push(
+                 context,
+                 MaterialPageRoute(builder: (context) => AttendancePage(companyId: companyId)),
+               );
+            },
+          ),
+          ListTile(
+            title: Text(
+              'Leave',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            leading: Icon(Icons.calendar_today),
+            onTap: () {
+              // Handle navigation to MainPage()
+              Navigator.pop(context); // Close the drawer
+               Navigator.push(
+                 context,
+                 MaterialPageRoute(builder: (context) => LeavePage(
+                            companyId: companyId,
+                            userPosition: userPosition)),
+               );
+            },
+          ),
+          ListTile(
+            title: Text(
+              'Claim',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            leading: Icon(Icons.request_page),
+            onTap: () {
+              // Handle navigation to MainPage()
+              Navigator.pop(context); // Close the drawer
+              // Navigator.push(
+              //   context,
+              //   MaterialPageRoute(builder: (context) => MainPage(companyId: widget.companyId, )),
+              // );
+            },
+          ),
+          ListTile(
+            title: Text(
+              'Salary',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            leading: Icon(Icons.attach_money),
+            onTap: () {
+              // Handle navigation to MainPage()
+              Navigator.pop(context); // Close the drawer
+               Navigator.push(
+                 context,
+                 MaterialPageRoute(builder: (context) => SalaryPage()),
+               );
+            },
+          ),
+          ListTile(
+            title: Text(
+              'Notification',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            leading: Icon(Icons.notifications),
+            onTap: () {
+              // Handle navigation to MainPage()
+              Navigator.pop(context); // Close the drawer
+               Navigator.push(
+                 context,
+                 MaterialPageRoute(builder: (context) =>  AnnouncementPage(userPosition: userPosition, companyId: companyId)),
+               );
+            },
+          ),
+          ListTile(
+            title: Text(
+              'User Management',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            leading: Icon(Icons.manage_accounts),
+            onTap: () {
+              // Handle navigation to MainPage()
+              Navigator.pop(context); // Close the drawer
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => UserManagementPage()),
+              );
+            },
+          ),
+          // Add more ListTile widgets for additional pages
+        ],
       ),
     );
   }

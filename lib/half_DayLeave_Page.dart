@@ -29,7 +29,7 @@ class _HalfDayLeave extends State<HalfDayLeave> {
   double leaveDay = 0.5;
   DateTime? startDate;
   String? reason;
-  String? remark;
+  String remark = '-';
   DateTime selectedDate = DateTime.now();
   String status = 'pending';
   bool isDataLoaded = false;
@@ -201,8 +201,8 @@ class _HalfDayLeave extends State<HalfDayLeave> {
                       ),
                     ),
                     Container(
-                      width: 150, // Set the width as per your requirement
-                      height: 40, // Set the height as per your requirement
+                      width: 153, // Set the width as per your requirement
+                      height: 45, // Set the height as per your requirement
                       decoration: BoxDecoration(
                         color: const Color.fromARGB(255, 238, 238, 238),
                         border: Border.all(color: Colors.grey),
@@ -312,7 +312,6 @@ class _HalfDayLeave extends State<HalfDayLeave> {
                       border: InputBorder.none,
                       hintText: 'remark (optimal)',
                     ),
-                    onSubmitted: (value) => remark = value,
                   ),
                 ),
               ),
@@ -340,7 +339,9 @@ class _HalfDayLeave extends State<HalfDayLeave> {
                       );
                     } else {
                       reason = _reasonController.text;
-                      remark = _remarkController.text;
+                      remark = _remarkController.text.isNotEmpty
+                          ? _remarkController.text
+                          : '-';
                       _createLeave();
                       setState(() {});
                     }

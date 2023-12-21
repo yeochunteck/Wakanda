@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:logger/logger.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
 
 class LeaveModel {
   final logger = Logger();
@@ -21,8 +23,23 @@ class LeaveModel {
     }
   }
 
+  final storage = FirebaseStorage.instance;
+
+  Future<String> uploadImage(String imagePath, String companyId) async {
+    try {
+      final ref = storage.ref().child('profile_images/$companyId.jpg');
+      await ref.putFile(File(imagePath));
+      final downloadURL = await ref.getDownloadURL();
+      return downloadURL;
+    } catch (e) {
+      logger.e('Error uploading image: $e');
+      return '';
+    }
+  }
+
   final CollectionReference usersCollection =
       FirebaseFirestore.instance.collection('users');
+
 
   Future<void> createLeave(
       String companyId, Map<String, dynamic> leaveInfo) async {

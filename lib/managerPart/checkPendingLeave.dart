@@ -10,6 +10,7 @@ import 'package:flutter_application_1/managerPart/process_PendingLeave_page.dart
 class CheckPendingLeave extends StatefulWidget {
   final String companyId;
   final String userPosition;
+  
 
   CheckPendingLeave(
       {Key? key, required this.companyId, required this.userPosition})
@@ -163,7 +164,7 @@ class _CheckPendingLeave extends State<CheckPendingLeave> {
                 itemCount: userNameList.length,
                 itemBuilder: (context, index) {
                   return Container(
-                    height: 160,
+                    height: 170,
                     margin: const EdgeInsets.symmetric(
                         horizontal: 10.0, vertical: 8.0),
                     padding: const EdgeInsets.all(8.0),
@@ -201,7 +202,7 @@ class _CheckPendingLeave extends State<CheckPendingLeave> {
                               fontWeight: FontWeight.bold,
                             ), // Set data color
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 5),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
