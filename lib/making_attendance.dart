@@ -10,6 +10,7 @@ import 'package:logger/logger.dart';
 import 'dart:ui';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_application_1/checkholiday.dart';
 
 //Logger Configuration
 final logger = Logger(
@@ -500,6 +501,9 @@ class _AttendancePageState extends State<AttendancePage>
           int.parse(checkOutTimeParts[2]), // second
     );
 
+        // Retrieve the public holiday status for the current date
+        bool isHoliday = await isPublicHoliday(currentDate);
+
         // Calculate working time
         Duration workingDuration = checkOutTime.difference(checkInTime);
     // Calculate working time in decimal hours
@@ -509,7 +513,7 @@ class _AttendancePageState extends State<AttendancePage>
         String year = currentDate.year.toString();
         String month = currentDate.month.toString().padLeft(2, '0');
         String day = currentDate.day.toString().padLeft(2, '0');
-
+    
     // Reference to the workingtime document based on companyId, year, month, and day
     CollectionReference dayCollectionRef = _firestore
         .collection('workingtime')
@@ -529,7 +533,8 @@ class _AttendancePageState extends State<AttendancePage>
 
     // Update the existing document or create a new one if it doesn't exist
     await dayDocRef.set({
-        'totalworkingtime': FieldValue.increment(totalWorkingHours),
+      'totalworkingtime': FieldValue.increment(totalWorkingHours),
+      'isHoliday': isHoliday,
     }, SetOptions(merge: true));
 
       }

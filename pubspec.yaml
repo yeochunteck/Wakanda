@@ -60,6 +60,7 @@ dependencies:
   geocoding: ^2.1.1
   firebase_performance: ^0.9.3+6
   toggle_switch: ^2.1.0
+  shared_preferences: ^2.2.2
   
   
   
