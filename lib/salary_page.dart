@@ -194,9 +194,10 @@ class _SalaryPageState extends State<SalaryPage> {
           },
         ),
         title: const Text(
-          'Salary Page',
+          'All User Salary',
           style: TextStyle(color: Colors.black),
         ),
+        centerTitle: true,
       ),
       body: Column(
         children: [

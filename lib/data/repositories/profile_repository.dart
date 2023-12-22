@@ -75,6 +75,7 @@ class ProfileRepository {
 
   Future<Map<String, dynamic>> getPreviousUserData(
       String companyId, DateTime effectiveDate) async {
+    DateTime lastDay = DateTime(effectiveDate.year, effectiveDate.month + 1, 0);
     try {
       final QuerySnapshot querySnapshot = await FirebaseFirestore.instance
           .collection('users')
@@ -90,7 +91,7 @@ class ProfileRepository {
             .collection('users')
             .doc(companyId)
             .collection('bankHistory')
-            .where('effectiveDate', isLessThanOrEqualTo: effectiveDate)
+            .where('effectiveDate', isLessThanOrEqualTo: lastDay)
             .orderBy('effectiveDate', descending: true)
             .get();
 
@@ -113,7 +114,7 @@ class ProfileRepository {
             .collection('users')
             .doc(companyId)
             .collection('salaryHistory')
-            .where('effectiveDate', isLessThanOrEqualTo: effectiveDate)
+            .where('effectiveDate', isLessThanOrEqualTo: lastDay)
             .orderBy('effectiveDate', descending: true)
             .get();
 
