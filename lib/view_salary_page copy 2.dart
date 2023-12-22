@@ -7,7 +7,6 @@ import 'package:logger/logger.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_application_1/data/repositories/profile_repository.dart';
 import 'package:flutter_application_1/data/repositories/bonus_repository.dart';
-import 'package:month_year_picker/month_year_picker.dart';
 
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -33,9 +32,6 @@ class ViewSalaryPage extends StatefulWidget {
 class _ViewSalaryPageState extends State<ViewSalaryPage> {
   final _formKey = GlobalKey<FormState>();
   final logger = Logger();
-
-  DateTime? _selected = DateTime.now();
-  TextEditingController monthYearController = TextEditingController();
 
   TextEditingController nameController = TextEditingController();
   TextEditingController emailController = TextEditingController();
@@ -67,15 +63,11 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
   num bonusAmount = 0;
   String formattedBonusAmount = '';
   Future<void>? userDataFuture; // Declare the future variable
-  bool _isUserDataFetched = false;
 
   @override
   void initState() {
     super.initState();
 
-    _selected = widget.selectedMonth;
-    final DateTime now = DateTime.now();
-    monthYearController.text = '${now.month}-${now.year}';
     // Fetch user data when the page is initialized
     userDataFuture = fetchUserData();
     // bonusFunction();
@@ -85,14 +77,9 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
 
   Future<void> fetchUserData() async {
     try {
-      // Check if user data has already been fetched
-      if (_isUserDataFetched) {
-        return;
-      }
-
       final userData = await ProfileRepository()
-          .getPreviousUserData(widget.companyId, _selected!);
-      logger.i('_selected $_selected!');
+          .getPreviousUserData(widget.companyId, widget.selectedMonth);
+
       logger.i(widget.selectedMonth);
 
       if (userData != null) {
@@ -111,11 +98,9 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
           epfNoController.text = epfNo;
           socsoNoController.text = socsoNo;
         });
-        bonusAmount = await getBonus('${widget.companyId}', _selected!);
+        bonusAmount =
+            await getBonus('${widget.companyId}', widget.selectedMonth);
         formattedBonusAmount = bonusAmount.toStringAsFixed(2);
-
-        // Set the flag to indicate that user data has been fetched
-        _isUserDataFetched = true;
       } else {
         // Handle the case when user data is not found
         logger.e('User data not found for companyId: ${widget.companyId}');
@@ -441,7 +426,7 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
                       right: 0,
                       bottom: 0,
                       child: pw.Text(
-                        ' ${DateFormat('MMMM yyyy').format(_selected!)} (Monthly)',
+                        ' ${DateFormat('MMMM yyyy').format(widget.selectedMonth)} (Monthly)',
                         style: pw.TextStyle(
                           fontWeight: pw.FontWeight.bold,
                           fontSize: 14,
@@ -679,7 +664,7 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
         ],
       ),
       body: FutureBuilder<void>(
-        future: fetchUserData(), // Replace with your data fetching function
+        future: userDataFuture, // Replace with your data fetching function
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(
@@ -696,64 +681,6 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.all(
-                        16.0), // Adjust the padding as needed
-                    child: GestureDetector(
-                      onTap: () async {
-                        // Show date picker and update the text when a date is selected
-                        DateTime? pickedDate = await showMonthYearPicker(
-                          context: context,
-                          initialDate: _selected ?? DateTime.now(),
-                          firstDate: DateTime(1900),
-                          lastDate: DateTime(2100),
-                        );
-
-                        if (pickedDate != null) {
-                          setState(() {
-                            _selected = pickedDate;
-                            monthYearController.text =
-                                '${pickedDate.month}-${pickedDate.year}';
-                            _isUserDataFetched = false;
-                          });
-                        }
-                      },
-                      child: Center(
-                        child: Container(
-                          width: 160, // Adjust the width as needed
-                          decoration: BoxDecoration(
-                            color: Colors
-                                .grey[300], // Set the background color to grey
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              // Month-Year Text
-                              Text(
-                                DateFormat('MMM yyyy').format(
-                                    _selected!), // Format the selected month and year
-                                // monthYearController.text, // Show selected month and year
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color.fromRGBO(229, 63, 248, 1),
-                                ),
-                              ),
-                              SizedBox(width: 10),
-
-                              // Calendar Icon
-                              Icon(
-                                Icons.calendar_today,
-                                size: 30,
-                                color: Colors.black,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
                   Text(
                     'Name: $name',
                     style: TextStyle(fontWeight: FontWeight.bold),
@@ -765,7 +692,7 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
                   ),
                   SizedBox(height: 5),
                   Text(
-                    'Pay Period: 1 ${DateFormat('MMM yyyy').format(_selected!)} - ${DateFormat('dd MMM yyyy').format(DateTime(_selected!.year, _selected!.month + 1, 0))}',
+                    'Pay Period: 1 ${DateFormat('MMM yyyy').format(widget.selectedMonth)} - ${DateFormat('dd MMM yyyy').format(DateTime(widget.selectedMonth.year, widget.selectedMonth.month + 1, 0))}',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   SizedBox(height: 16.0),
@@ -994,7 +921,7 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
           _buildRow('TOTAL OVER TIME', '125.25'),
           SizedBox(height: 8.0),
           Text(
-            'OT Period(s) 01-${DateFormat('MM-yyyy').format(_selected!)} to ${DateFormat('dd-MM-yyyy').format(DateTime(_selected!.year, _selected!.month + 1, 0))}',
+            'OT Period(s) 01-${DateFormat('MM-yyyy').format(widget.selectedMonth)} to ${DateFormat('dd-MM-yyyy').format(DateTime(widget.selectedMonth.year, widget.selectedMonth.month + 1, 0))}',
           ),
           SizedBox(height: 8.0),
           // _buildOvertimeDetails(),
@@ -1019,7 +946,7 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
           SizedBox(height: 8.0),
           _buildRow('TOTAL NO PAY', '-100.00'),
           Text(
-            '[${DateFormat('yyyy-MM').format(_selected!)}-01 TO ${DateFormat('yyyy-MM-dd').format(DateTime(_selected!.year, _selected!.month + 1, 0))}]',
+            '[${DateFormat('yyyy-MM').format(widget.selectedMonth)}-01 TO ${DateFormat('yyyy-MM-dd').format(DateTime(widget.selectedMonth.year, widget.selectedMonth.month + 1, 0))}]',
           ),
           Text('- Unpaid Leaves - 1.00 Days = 100.00'),
           Text('- Insufficient Hours Fine - 1.8 Hours = 254.75'),

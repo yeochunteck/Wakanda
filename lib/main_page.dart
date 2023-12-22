@@ -8,6 +8,8 @@ import 'package:flutter_application_1/create_user_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_application_1/data/repositories/profile_repository.dart';
 import 'package:flutter_application_1/user_management_page.dart';
+import 'package:flutter_application_1/salary_management_page.dart';
+import 'package:flutter_application_1/view_salary_page.dart';
 
 class MainPage extends StatefulWidget {
   final String companyId;
@@ -24,7 +26,6 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   final logger = Logger();
   ProfileRepository profileRepository = ProfileRepository();
-
   // Future<String> fetchName() async {
   //   try {
   //     String name =
@@ -139,7 +140,8 @@ class _MainPageState extends State<MainPage> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => SalaryPage()),
+                  MaterialPageRoute(
+                      builder: (context) => SalaryManagementPage()),
                 );
               },
               child: const Row(
@@ -151,21 +153,22 @@ class _MainPageState extends State<MainPage> {
               ),
             ),
             const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => AllProfilePage()),
-                );
-              },
-              child: const Row(
-                children: [
-                  Icon(Icons.group),
-                  SizedBox(width: 10),
-                  Text('All Profile Page'),
-                ],
+            if (widget.userPosition == 'Manager')
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => AllProfilePage()),
+                  );
+                },
+                child: const Row(
+                  children: [
+                    Icon(Icons.group),
+                    SizedBox(width: 10),
+                    Text('All Profile Page'),
+                  ],
+                ),
               ),
-            ),
             const SizedBox(height: 20),
             //If userPosition is Manager then show
             if (widget.userPosition == 'Manager')
@@ -183,6 +186,28 @@ class _MainPageState extends State<MainPage> {
                     Icon(Icons.add),
                     SizedBox(width: 10),
                     Text('Create New User'),
+                  ],
+                ),
+              ),
+
+            if (widget.userPosition != 'Manager')
+              ElevatedButton(
+                onPressed: () {
+                  // Navigate to the create new user page
+                  // Replace `CreateNewUserPage` with the actual name of your page
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ViewSalaryPage(
+                            companyId: widget.companyId,
+                            selectedMonth: DateTime.now()),
+                      ));
+                },
+                child: const Row(
+                  children: [
+                    Icon(Icons.add),
+                    SizedBox(width: 10),
+                    Text('Salary'),
                   ],
                 ),
               ),
@@ -371,7 +396,26 @@ class MyDrawer extends StatelessWidget {
               );
             },
           ),
-          // Add more ListTile widgets for additional pages
+          // Divider for visual separation
+          Divider(),
+          ListTile(),
+
+          ListTile(
+            title: Text(
+              'Logout',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            leading: Icon(Icons.logout),
+            onTap: () {
+              FirebaseAuth.instance.signOut();
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const HomePage()),
+              );
+            },
+          ),
         ],
       ),
     );
