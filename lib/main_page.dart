@@ -15,6 +15,8 @@ import 'package:flutter_application_1/Apply_FullLeave_page.dart';
 import 'package:flutter_application_1/managerPart/checkPendingLeave.dart';
 import 'package:flutter_application_1/managerPart/checkPendingClaim.dart';
 import 'package:flutter_application_1/Announcement.dart';
+import 'package:flutter_application_1/attendance_view.dart';
+
 
 class MainPage extends StatefulWidget {
   final String companyId;
@@ -293,11 +295,19 @@ class MyDrawer extends StatelessWidget {
             leading: const Icon(Icons.check_circle_outline),
             onTap: () {
               // Handle navigation to MainPage()
-              Navigator.pop(context); // Close the drawer
+              Navigator.pop(context);
+               // Close the drawer
+              if(userPosition == 'Manager'){
                Navigator.push(
+                 context,
+                 MaterialPageRoute(builder: (context) => AttendanceView()),
+               );
+              }else{
+                Navigator.push(
                  context,
                  MaterialPageRoute(builder: (context) => AttendancePage(companyId: companyId)),
                );
+              }
             },
           ),
           ListTile(

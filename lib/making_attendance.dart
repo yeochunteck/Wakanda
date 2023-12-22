@@ -450,6 +450,9 @@ class _AttendancePageState extends State<AttendancePage>
 
         _recentlyCheckInDoc = checkInDocRef;
 
+      // Update the user document if it doesn't exist or has no field
+      await _updateUserDocumentInAttendanceCollection(widget.companyId);
+
         latestAttendanceDoc = await _getLatestAttendanceDoc();
 
       // Post check-in success announcement
@@ -583,6 +586,20 @@ class _AttendancePageState extends State<AttendancePage>
       /*setState(() {
         _isProcessing = false;
       });*/
+    }
+  }
+
+  Future<void> _updateUserDocumentInAttendanceCollection(String companyId) async {
+    DocumentSnapshot userDoc = await _firestore
+        .collection('Attendance')
+        .doc(companyId)
+        .get();
+
+    if (!userDoc.exists || !(userDoc.data() as Map<String, dynamic>).containsKey('someField')) {
+      await _firestore
+          .collection('Attendance')
+          .doc(companyId)
+          .set({'someField': 'defaultValue'}, SetOptions(merge: true));
     }
   }
 
