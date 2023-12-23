@@ -595,12 +595,11 @@ class _AttendancePageState extends State<AttendancePage>
         .doc(companyId)
         .get();
 
-    if (!userDoc.exists || !(userDoc.data() as Map<String, dynamic>).containsKey('someField')) {
       await _firestore
           .collection('Attendance')
           .doc(companyId)
-          .set({'someField': 'defaultValue'}, SetOptions(merge: true));
-    }
+          .set({'LatestCheckInTime': DateTime.now()}, SetOptions(merge: true));
+    
   }
 
   @override
@@ -820,8 +819,13 @@ Widget build(BuildContext context) {
       appBar: AppBar(
         centerTitle: true, // this is all you ne
         title: Text(
-        'Attendance',
-        ),
+    'Attendance View',
+    style: TextStyle(
+      color: Colors.black87, // Adjust text color for modern style
+      fontWeight: FontWeight.bold,
+      fontSize: 20,
+    ),
+  ),
         backgroundColor: Colors.purpleAccent, // Customize app bar color
         elevation: 0, // Remove app bar shadow
       ),
