@@ -71,19 +71,13 @@ Widget build(BuildContext context) {
       backgroundColor: Colors.purpleAccent,
       iconTheme: IconThemeData(color: Colors.black),
     ),
-    body: Align(
-       alignment: Alignment.centerLeft,
-      child: Padding(
-        padding: EdgeInsets.only(right: 100, top:160),
-      child: ListView.builder(
+    body: 
+    ListView.builder(
       itemCount: widget.attendanceRecords.length,
-      clipBehavior: Clip.none,
       itemBuilder: (BuildContext context, int index) {
         Map<String, dynamic> record = widget.attendanceRecords[index];
 
-        return Padding(
-          padding: EdgeInsets.only(top:0),
-          child: InteractiveCard(
+        return InteractiveCard(
           record: record,
           checkInAddresses: checkInAddresses,
           checkOutAddresses: checkOutAddresses,
@@ -95,8 +89,6 @@ Widget build(BuildContext context) {
               });
             },
         )
-        );
-       
         
         /*Card(
   elevation: 8,
@@ -233,9 +225,6 @@ Widget build(BuildContext context) {
 ;
       },
     ),
-      )
-    )
-    
   );
 }
 }
@@ -304,7 +293,7 @@ String checkOutAddress = widget.checkOutAddresses.length > widget.index
     ? widget.checkOutAddresses[widget.index] ?? 'Address not available'
     : 'Address not available';
 
-final maxLength = 11; // Adjust the maximum length as needed
+final maxLength = 16; // Adjust the maximum length as needed
 
 String limitedCheckInAddress = checkInAddress.length > maxLength
     ? '${checkInAddress.substring(0, maxLength)}...'
@@ -333,7 +322,7 @@ String limitedCheckOutAddress = checkOutAddress.length > maxLength
   children: [
           Card(
             elevation: widget.isSelected ? 12 : 8,
-            margin: EdgeInsets.only(top:0,bottom:0,right:12,left:4),
+            margin: EdgeInsets.all(12),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
               side: BorderSide(
@@ -341,8 +330,7 @@ String limitedCheckOutAddress = checkOutAddress.length > maxLength
                 width: widget.isSelected ? 2 : 0,
               ),
             ),
-            color: widget.isSelected ? Colors.blueGrey[50] :
-             widget.index.isEven? Colors.white : Colors.grey[300],
+            color: widget.isSelected ? Colors.blueGrey[50] : Colors.white,
             child: Material(
               borderRadius: BorderRadius.circular(20),
               color: widget.isSelected ? Colors.blueGrey[100] : Colors.transparent,
@@ -357,7 +345,7 @@ String limitedCheckOutAddress = checkOutAddress.length > maxLength
                   children: [
                     ClipRect(
                       child: Container(
-                        padding: EdgeInsets.only(top:16,bottom:16,right:16),
+                        padding: EdgeInsets.all(16),
                         child: ListTile(
                           contentPadding: EdgeInsets.zero,
                           title: Container(
@@ -496,7 +484,7 @@ String limitedCheckOutAddress = checkOutAddress.length > maxLength
       curve: Curves.easeInOut,
       transform: widget.isSelected
           ? Matrix4.translationValues(-15, -27, 0)
-          : Matrix4.translationValues(0, -10, 0),
+          : Matrix4.translationValues(10, -10, 0),
       child: Container(
         padding: EdgeInsets.only(left:20),
         decoration: BoxDecoration(
@@ -518,7 +506,7 @@ String limitedCheckOutAddress = checkOutAddress.length > maxLength
           ],
         ),
         child: Container(
-          width: 60,
+          width: 53,
           height: 53,
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -534,7 +522,7 @@ String limitedCheckOutAddress = checkOutAddress.length > maxLength
     child: Stack(
   children: [
     Text(
-      '${widget.index + 1}',
+      '${widget.index + 81}',
       style: TextStyle(
         color: widget.isSelected ? Colors.red : Colors.white.withOpacity(0.5),
         fontWeight: FontWeight.bold,
@@ -543,7 +531,7 @@ String limitedCheckOutAddress = checkOutAddress.length > maxLength
       ),
     ),
     Text(
-      '${widget.index + 1}',
+      '${widget.index + 81}',
       style: TextStyle(
         color: Colors.deepPurple,
         fontWeight: FontWeight.bold,

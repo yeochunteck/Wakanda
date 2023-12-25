@@ -18,7 +18,6 @@ class AttendanceRecordsPage extends StatefulWidget {
 class _AttendanceRecordsPageState extends State<AttendanceRecordsPage> {
   List<String> checkInAddresses = [];
   List<String> checkOutAddresses = [];
-  int? selectedCardIndex; // Track the selected card index
 
   @override
   void initState() {
@@ -71,32 +70,17 @@ Widget build(BuildContext context) {
       backgroundColor: Colors.purpleAccent,
       iconTheme: IconThemeData(color: Colors.black),
     ),
-    body: Align(
-       alignment: Alignment.centerLeft,
-      child: Padding(
-        padding: EdgeInsets.only(right: 100, top:160),
-      child: ListView.builder(
+    body: ListView.builder(
       itemCount: widget.attendanceRecords.length,
-      clipBehavior: Clip.none,
       itemBuilder: (BuildContext context, int index) {
         Map<String, dynamic> record = widget.attendanceRecords[index];
 
-        return Padding(
-          padding: EdgeInsets.only(top:0),
-          child: InteractiveCard(
+        return InteractiveCard(
           record: record,
           checkInAddresses: checkInAddresses,
           checkOutAddresses: checkOutAddresses,
           index:index,
-           isSelected: selectedCardIndex == index, // Pass whether the card is selected or not
-            onTap: () {
-              setState(() {
-                selectedCardIndex = index; // Update the selected card index
-              });
-            },
         )
-        );
-       
         
         /*Card(
   elevation: 8,
@@ -233,9 +217,6 @@ Widget build(BuildContext context) {
 ;
       },
     ),
-      )
-    )
-    
   );
 }
 }
@@ -245,8 +226,6 @@ class InteractiveCard extends StatefulWidget {
   final List<String> checkInAddresses;
   final List<String> checkOutAddresses;
   final int index;
-  final bool isSelected; // Add isSelected property
-  final Function() onTap; // Add onTap function
 
   const InteractiveCard({
     Key? key,
@@ -254,8 +233,6 @@ class InteractiveCard extends StatefulWidget {
     required this.checkInAddresses,
     required this.checkOutAddresses,
     required this.index,
-    required this.isSelected,
-    required this.onTap,
   }) : super(key: key);
 
   @override
@@ -266,8 +243,7 @@ class _InteractiveCardState extends State<InteractiveCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
-  //bool isSelected = false;
-  
+  bool isSelected = false;
 
   @override
   void initState() {
@@ -287,10 +263,11 @@ class _InteractiveCardState extends State<InteractiveCard>
     super.dispose();
   }
 
-    /*void _toggleSelection() {
+    void _toggleSelection() {
     setState(() {
       isSelected = !isSelected;
-    });*/
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -304,7 +281,7 @@ String checkOutAddress = widget.checkOutAddresses.length > widget.index
     ? widget.checkOutAddresses[widget.index] ?? 'Address not available'
     : 'Address not available';
 
-final maxLength = 11; // Adjust the maximum length as needed
+final maxLength = 16; // Adjust the maximum length as needed
 
 String limitedCheckInAddress = checkInAddress.length > maxLength
     ? '${checkInAddress.substring(0, maxLength)}...'
@@ -318,7 +295,7 @@ String limitedCheckOutAddress = checkOutAddress.length > maxLength
     return GestureDetector(
   onTapDown: (_) {
     _controller.forward();
-    widget.onTap(); // Toggle selection on tap
+    _toggleSelection(); // Toggle selection on tap
   },
   onTapUp: (_) {
     _controller.reverse();
@@ -332,38 +309,37 @@ String limitedCheckOutAddress = checkOutAddress.length > maxLength
       child: Stack(
   children: [
           Card(
-            elevation: widget.isSelected ? 12 : 8,
-            margin: EdgeInsets.only(top:0,bottom:0,right:12,left:4),
+            elevation: isSelected ? 12 : 8,
+            margin: EdgeInsets.all(12),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
               side: BorderSide(
-                color: widget.isSelected ? Colors.blue : Colors.transparent,
-                width: widget.isSelected ? 2 : 0,
+                color: isSelected ? Colors.blue : Colors.transparent,
+                width: isSelected ? 2 : 0,
               ),
             ),
-            color: widget.isSelected ? Colors.blueGrey[50] :
-             widget.index.isEven? Colors.white : Colors.grey[300],
+            color: isSelected ? Colors.blueGrey[50] : Colors.white,
             child: Material(
               borderRadius: BorderRadius.circular(20),
-              color: widget.isSelected ? Colors.blueGrey[100] : Colors.transparent,
+              color: isSelected ? Colors.blueGrey[100] : Colors.transparent,
               child: InkWell(
                 borderRadius: BorderRadius.circular(20),
                 onTap: () {
-                  widget.onTap();
+                  _toggleSelection();
                 },
-                splashColor: widget.isSelected ? Colors.transparent : Colors.blueGrey.withOpacity(0.3),
+                splashColor: isSelected ? Colors.transparent : Colors.blueGrey.withOpacity(0.3),
                 child: Stack(
                   alignment: Alignment.topLeft,
                   children: [
                     ClipRect(
                       child: Container(
-                        padding: EdgeInsets.only(top:16,bottom:16,right:16),
+                        padding: EdgeInsets.all(16),
                         child: ListTile(
                           contentPadding: EdgeInsets.zero,
                           title: Container(
   padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
   decoration: BoxDecoration(
-    color:widget. isSelected ? Colors.blue : Colors.deepPurple,
+    color: isSelected ? Colors.blue : Colors.deepPurple,
     borderRadius: BorderRadius.only(
       topLeft: Radius.circular(20),
       topRight: Radius.circular(20),
@@ -490,27 +466,26 @@ String limitedCheckOutAddress = checkOutAddress.length > maxLength
               ),
             ),
           ),// Positioned Index Display
-        // Positioned Index Display
-    AnimatedContainer(
+        AnimatedContainer(
       duration: Duration(milliseconds: 300),
       curve: Curves.easeInOut,
-      transform: widget.isSelected
-          ? Matrix4.translationValues(-15, -27, 0)
-          : Matrix4.translationValues(0, -10, 0),
+      transform: isSelected
+          ? Matrix4.translationValues(-20, -27, 0)
+          : Matrix4.translationValues(0, 0, 0),
       child: Container(
-        padding: EdgeInsets.only(left:20),
+        padding: EdgeInsets.all(8),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: widget.isSelected
-                  ? [Colors.purple.withOpacity(0.5), Colors.deepOrange.withOpacity(0.7)]
-                  : [Colors.lightBlue.withOpacity(0.0), Colors.teal.withOpacity(0.0)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+            colors: isSelected
+                ? [Colors.purpleAccent, Colors.deepOrangeAccent]
+                : [Colors.lightBlueAccent, Colors.tealAccent],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(0),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: widget.isSelected ? Colors.purple.withOpacity(0.3) : Colors.blue.withOpacity(0.3),
+              color: isSelected ? Colors.purple.withOpacity(0.3) : Colors.blue.withOpacity(0.3),
               spreadRadius: 2,
               blurRadius: 10,
               offset: Offset(0, 4),
@@ -518,83 +493,21 @@ String limitedCheckOutAddress = checkOutAddress.length > maxLength
           ],
         ),
         child: Container(
-          width: 60,
-          height: 53,
+          width: 50,
+          height: 50,
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors:widget. isSelected
-                  ? [Colors.purple.withOpacity(0.5), Colors.deepOrange.withOpacity(0.7)]
-                  : [Colors.lightBlue.withOpacity(0.0), Colors.teal.withOpacity(0.0)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            shape: BoxShape.rectangle,
-          ),
-          child: Center(
-    child: Stack(
-  children: [
-    Text(
-      '${widget.index + 1}',
-      style: TextStyle(
-        color: widget.isSelected ? Colors.red : Colors.white.withOpacity(0.5),
-        fontWeight: FontWeight.bold,
-        fontSize: 53,
-        letterSpacing: -4,
-      ),
-    ),
-    Text(
-      '${widget.index + 1}',
-      style: TextStyle(
-        color: Colors.deepPurple,
-        fontWeight: FontWeight.bold,
-        fontSize: 50,
-        letterSpacing: -4,
-        fontStyle: FontStyle.italic, // Apply italic style here
-      ),
-    ),
-    Positioned(
-      top: 0,
-      left:25,
-      child: Text(
-        'No.',
-        style: TextStyle(
-          color: Colors.blueGrey,
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-          fontStyle: FontStyle.italic, // Apply italic style here
-        ),
-      ),
-    ),
-  ],
-),
-        ),
-      ),
-    ),
-    // Adjusted Index with Opacity
-    /*AnimatedContainer(
-      duration: Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-      transform: isSelected
-          ? Matrix4.translationValues(-20, -27, 0)
-          : Matrix4.translationValues(0, 0, 0),
-      child: Container(
-        width: 50,
-        height: 50,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: isSelected
+              colors: isSelected
                   ? [Colors.purple.withOpacity(0.9), Colors.deepOrange.withOpacity(0.7)]
                   : [Colors.lightBlue.withOpacity(0.9), Colors.teal.withOpacity(0.7)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
+            ),
+            shape: BoxShape.circle,
           ),
-          shape: BoxShape.circle,
-        ),
-        child: Center(
-          child: Opacity(
-            opacity: isSelected ? 1.0 : 0.0, // Set the opacity accordingly
+          child: Center(
             child: Text(
-              '${widget.index+10}',
+              '${widget.index}',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -604,8 +517,8 @@ String limitedCheckOutAddress = checkOutAddress.length > maxLength
           ),
         ),
       ),
-    ),*/
-      )],
+    ),
+        ],
       ),
     ),
   ),
