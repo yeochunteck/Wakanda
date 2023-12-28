@@ -40,6 +40,7 @@ class _MainPageState extends State<MainPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.purpleAccent,
       appBar: AppBar(
         title: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -63,7 +64,7 @@ class _MainPageState extends State<MainPage> {
           ],
         ),
         backgroundColor:
-            Colors.transparent, // Set the background color to transparent
+            Colors.white, // Set the background color to transparent
         elevation: 0, // Remove the shadow
         iconTheme: const IconThemeData(
             color: Colors.black, size: 30), // Set the icon color to black

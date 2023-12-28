@@ -39,7 +39,7 @@ Future<Map<String, Map<String, dynamic>>> getUsersWithAttendance(DateTime chosen
   }
 
   for (var doc in attendanceSnapshot.docs) {
-    QuerySnapshot dateSnapshot = await doc.reference.collection(formattedDate).get();
+    QuerySnapshot dateSnapshot = await doc.reference.collection(formattedDate).orderBy('CheckInTime', descending: true).get();
     List<Map<String, dynamic>> attendanceRecords = [];
     for (var record in dateSnapshot.docs) {
       attendanceRecords.add(record.data() as Map<String, dynamic>);
@@ -89,6 +89,7 @@ void navigateToAttendanceRecordPage(BuildContext context, Map<String, dynamic> u
       builder: (context) => AttendanceRecordsPage(
         userDetails: userDetails,
         attendanceRecords: attendanceRecords,
+        selectedDate: _selectedDate,
       ),
     ),
   );
@@ -105,9 +106,9 @@ void navigateToAttendanceRecordPage(BuildContext context, Map<String, dynamic> u
     _attendanceSubscription = _firestore.collection('Attendance').snapshots().listen((snapshot) {
       checkAttendanceAndFetchUsers();
     });
-    _attendanceSubscription = _firestore.collection('Attendance').snapshots().listen((snapshot) {
+    /*_attendanceSubscription = _firestore.collection('Attendance').snapshots().listen((snapshot) {
       checkAttendanceAndFetchUsers();
-    });
+    });*/
   }
 
  @override
