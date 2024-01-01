@@ -72,7 +72,7 @@ class ProfileRepository {
       return {};
     }
   }
-  
+
   Future<Map<String, dynamic>> getPreviousUserData(
       String companyId, DateTime effectiveDate) async {
     DateTime lastDay = DateTime(effectiveDate.year, effectiveDate.month + 1, 0);
@@ -335,7 +335,7 @@ class ProfileRepository {
     }
   }
 
-    Future<bool> checkDuplicateEmail(String email) async {
+  Future<bool> checkDuplicateEmail(String email) async {
     // Query the "users" collection to check if the email already exists
     QuerySnapshot querySnapshot = await FirebaseFirestore.instance
         .collection('users')

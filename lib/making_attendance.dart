@@ -23,12 +23,16 @@ final logger = Logger(
     printTime: true, // print time in the log messages
   ),
 );
+  GlobalKey<_AttendancePageState> attendancePageKey = GlobalKey<_AttendancePageState>();
+
 
 class AttendancePage extends StatefulWidget {
   final String companyId;
 
+
   AttendancePage({required this.companyId});
 
+  @override
   @override
   _AttendancePageState createState() => _AttendancePageState();
 }
@@ -145,9 +149,10 @@ class _AttendancePageState extends State<AttendancePage>
 }
   
   //ListenToDatabase
-  void _listenToAttendanceChanges() {
-    setState((){
-    });
+  void listenToAttendanceChanges() {
+
+    /*setState((){
+    });*/
 
     _attendanceStream = FirebaseFirestore.instance
         .collection('Attendance')
@@ -605,6 +610,7 @@ class _AttendancePageState extends State<AttendancePage>
   @override
   void initState() {
     super.initState();
+    attendancePageKey = GlobalKey<_AttendancePageState>();
 
     //Current
     _getCurrentDate();
@@ -633,7 +639,7 @@ class _AttendancePageState extends State<AttendancePage>
     _fadeController.forward();
     _updateDateTime(); // Fetch and start updating date/time
     _requestLocationPermission();//LocationPermission
-    _listenToAttendanceChanges();
+    listenToAttendanceChanges();
         //Personal
     _fetchUserData();
     checkGPSStatus();
@@ -1596,4 +1602,20 @@ Widget build(BuildContext context) {
   ),
 );
 }
+}
+
+// This class acts as a public interface to access _AttendancePageState
+class AttendancePageManager {
+  late _AttendancePageState _attendancePageState;
+
+  // Method to initialize the _AttendancePageState
+  void initialize() {
+    _attendancePageState = _AttendancePageState();
+  }
+
+  // Method to retrieve data from _AttendancePageState
+  void getAttendanceData() {
+    _attendancePageState.listenToAttendanceChanges();
+  }
+
 }
