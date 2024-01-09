@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/main_page.dart';
 import 'package:toggle_switch/toggle_switch.dart';
-import 'package:flutter_application_1/managerPart/checkApprovedClaim.dart';
-import 'package:flutter_application_1/managerPart/checkRejectedClaim.dart';
 import 'package:logger/logger.dart';
 import 'package:flutter_application_1/models/data_model.dart';
 import 'package:flutter_application_1/managerPart/process_PendingClaim_page.dart';
