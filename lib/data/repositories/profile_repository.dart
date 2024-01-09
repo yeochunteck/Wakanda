@@ -404,6 +404,36 @@ class ProfileRepository {
     }
   }
 
+  Future<String> getUserProfileImage(String companyId) async {
+    try {
+      final QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('users') // Update the collection name as needed
+          .where('companyId', isEqualTo: companyId)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        final Map<String, dynamic> companyData =
+            querySnapshot.docs.first.data() as Map<String, dynamic>;
+
+        final String? profileImage = companyData['image'];
+
+        if (profileImage != null) {
+          return profileImage;
+        } else {
+          // Return an empty string or a default image URL
+          return ''; // You can change this to your desired default value
+        }
+      } else {
+        // Return an empty string or a default image URL
+        return ''; // You can change this to your desired default value
+      }
+    } catch (e) {
+      logger.e('Error fetching user profile image by companyId: $e');
+      // Handle the error as needed
+      throw Exception('Error fetching user profile image by companyId');
+    }
+  }
+
   Future<String> getNameByCompanyId(String companyId) async {
     try {
       final QuerySnapshot querySnapshot = await FirebaseFirestore.instance

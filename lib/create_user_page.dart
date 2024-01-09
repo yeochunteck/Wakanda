@@ -5,7 +5,6 @@ import 'package:logger/logger.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import 'package:uuid/uuid.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_application_1/login_page.dart';
@@ -110,7 +109,7 @@ class _CreateUserPageState extends State<CreateUserPage> {
   Future<void> _selectDateofBirth(BuildContext context) async {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: dateOfBirth ?? DateTime.now(),
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
     );
@@ -125,7 +124,7 @@ class _CreateUserPageState extends State<CreateUserPage> {
   Future<void> _selectJoiningDate(BuildContext context) async {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: joiningDate ?? DateTime.now(),
       firstDate: DateTime(1900),
       lastDate: DateTime(2100),
     );

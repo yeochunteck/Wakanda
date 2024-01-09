@@ -189,7 +189,7 @@ class _HomePageState extends State<HomePage> {
     // Your existing login page UI code...
     return Center(
       child: Padding(
-        padding: EdgeInsets.fromLTRB(20.0, 100.0, 20.0, 20.0),
+        padding: EdgeInsets.fromLTRB(20.0, 50.0, 20.0, 20.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start, // Align to the top
           crossAxisAlignment: CrossAxisAlignment.center, // Center horizontally

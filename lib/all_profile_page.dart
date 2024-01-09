@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_application_1/data/repositories/profile_repository.dart';
 import 'package:flutter_application_1/profile_page.dart';
 import 'package:flutter_application_1/edit_profile_page.dart';
-// import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:month_year_picker/month_year_picker.dart';
 
 class AllProfilePage extends StatefulWidget {
@@ -15,6 +15,8 @@ class AllProfilePage extends StatefulWidget {
 class _AllProfilePageState extends State<AllProfilePage> {
   final logger = Logger();
   String? _search;
+  bool activeUser = true;
+
   final TextEditingController _searchController = TextEditingController();
 
   // Define the TextEditingController
@@ -30,8 +32,7 @@ class _AllProfilePageState extends State<AllProfilePage> {
   }
 
   Future<List<Map<String, dynamic>>> _getFilteredUsers(
-      String? searchTerm) async {
-    logger.i(searchTerm?.isEmpty);
+      String? searchTerm, bool activeUser) async {
     final QuerySnapshot querySnapshot =
         await _firestore.collection('users').get();
 
@@ -39,14 +40,19 @@ class _AllProfilePageState extends State<AllProfilePage> {
 
     for (var doc in querySnapshot.docs) {
       final userData = doc.data() as Map<String, dynamic>;
-      final userName = userData['name'].toString().toLowerCase();
 
-      // Check if searchTerm is null or empty, or if the userName contains the searchTerm
-      if (searchTerm == null ||
-          searchTerm.isEmpty ||
-          userName.contains(searchTerm.toLowerCase())) {
-        // Add the user to the filteredUsers list
-        filteredUsers.add(userData);
+      // Check if the user is active or inactive based on the 'status' field
+      if ((activeUser && userData['status'] == true) ||
+          (!activeUser && userData['status'] == false)) {
+        final userName = userData['name'].toString().toLowerCase();
+
+        // Check if searchTerm is null or empty, or if the userName contains the searchTerm
+        if (searchTerm == null ||
+            searchTerm.isEmpty ||
+            userName.contains(searchTerm.toLowerCase())) {
+          // Add the user to the filteredUsers list
+          filteredUsers.add(userData);
+        }
       }
     }
 
@@ -57,24 +63,40 @@ class _AllProfilePageState extends State<AllProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color.fromRGBO(229, 63, 248, 1),
-        elevation: 0,
-        iconTheme: const IconThemeData(
-          color: Colors.black,
-          size: 30,
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-        title: const Text(
-          'All User Profile',
-          style: TextStyle(color: Colors.black),
-        ),
-        centerTitle: true,
-      ),
+          backgroundColor: const Color.fromRGBO(229, 63, 248, 1),
+          elevation: 0,
+          iconTheme: const IconThemeData(
+            color: Colors.black,
+            size: 30,
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+          title: Text(
+            activeUser ? 'All User Profile' : 'Deactivated User',
+            style: TextStyle(color: Colors.black),
+          ),
+          centerTitle: true,
+          actions: [
+            IconButton(
+              icon: Icon(
+                activeUser ? Icons.block : Icons.check_circle,
+                color: activeUser
+                    ? Colors.red
+                    : Colors.green, // Set color to red if editing
+              ),
+              onPressed: () {
+                setState(() {
+                  activeUser = !activeUser;
+                  if (activeUser) {}
+                  if (!activeUser) {}
+                });
+              },
+            ),
+          ]),
       body: Column(
         children: [
           //Search Bar
@@ -140,7 +162,7 @@ class _AllProfilePageState extends State<AllProfilePage> {
           // Employee Rectangles
           Expanded(
             child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: _getFilteredUsers(_search),
+              future: _getFilteredUsers(_search, activeUser),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(

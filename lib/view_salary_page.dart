@@ -7,6 +7,10 @@ import 'package:logger/logger.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_application_1/data/repositories/profile_repository.dart';
 import 'package:flutter_application_1/data/repositories/bonus_repository.dart';
+import 'package:flutter_application_1/data/repositories/workingtime_repository.dart';
+import 'package:flutter_application_1/data/repositories/leave_repository.dart';
+import 'package:flutter_application_1/data/repositories/claim_repository.dart';
+
 import 'package:month_year_picker/month_year_picker.dart';
 
 import 'package:pdf/pdf.dart';
@@ -30,11 +34,40 @@ class ViewSalaryPage extends StatefulWidget {
   _ViewSalaryPageState createState() => _ViewSalaryPageState();
 }
 
+List<int> countWeekdaysInEachMonth(int year) {
+  List<int> monthWeekdays = List<int>.filled(12, 0);
+
+  for (int month = 1; month <= 12; month++) {
+    int weekdaysCount = countWeekdays(year, month);
+    monthWeekdays[month - 1] = weekdaysCount;
+  }
+
+  return monthWeekdays;
+}
+
+int countWeekdays(int year, int month) {
+  int weekdaysCount = 0;
+  DateTime firstDay = DateTime(year, month, 1);
+  int lastDay = DateTime(year, month + 1, 0).day;
+
+  for (int day = 1; day <= lastDay; day++) {
+    DateTime currentDate = DateTime(year, month, day);
+
+    if (currentDate.weekday >= DateTime.monday &&
+        currentDate.weekday <= DateTime.friday) {
+      weekdaysCount++;
+    }
+  }
+
+  return weekdaysCount;
+}
+
 class _ViewSalaryPageState extends State<ViewSalaryPage> {
   final _formKey = GlobalKey<FormState>();
   final logger = Logger();
-
-  DateTime? _selected = DateTime.now();
+  // late List<int> monthWeekdays;
+  int weekdayCount = 0;
+  DateTime _selected = DateTime.now();
   TextEditingController monthYearController = TextEditingController();
 
   TextEditingController nameController = TextEditingController();
@@ -52,7 +85,7 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
   String? selectedPosition;
   String? pickedImagePath;
   String imageUrl = '';
-  DateTime? joiningDate;
+  late DateTime joiningDate;
   bool status = true;
   String accountNumber = '';
   String selectedBank = ' ';
@@ -69,6 +102,23 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
   Future<void>? userDataFuture; // Declare the future variable
   bool _isUserDataFetched = false;
 
+  double normalWorkingTime = 0.0;
+  double normalOT = 0.0;
+  double holidayWorkingTime = 0.0;
+  double holidayOT = 0.0;
+  double lessnormalWorkingTime = 0.0;
+  double holidayCount = 0.0;
+
+  late Map<String, double> unpaidLeaveDay;
+
+  double medicalClaim = 0.0;
+  double travelClaim = 0.0;
+  double mealClaim = 0.0;
+  double fuelClaim = 0.0;
+  double entertainmentClaim = 0.0;
+
+  late DateTime pickedDate;
+
   @override
   void initState() {
     super.initState();
@@ -77,11 +127,8 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
     final DateTime now = DateTime.now();
     monthYearController.text = '${now.month}-${now.year}';
     // Fetch user data when the page is initialized
-    userDataFuture = fetchUserData();
-    // bonusFunction();
+    // userDataFuture = fetchUserData();
   }
-
-  // Future<num> bonusFunction() async {}
 
   Future<void> fetchUserData() async {
     try {
@@ -89,10 +136,46 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
       if (_isUserDataFetched) {
         return;
       }
+      // monthWeekdays = countWeekdaysInEachMonth(_selected.year);
+      // logger.i('monthWeekdays ${monthWeekdays[_selected.month - 1]}');
+      weekdayCount = countWeekdays(_selected.year, _selected.month);
+      logger.i('weekdayCount $weekdayCount');
 
+      Map<String, Map<String, dynamic>> claimdata =
+          await getClaimSummary(widget.companyId, _selected);
+
+      // // Access the 'summary' key to get the calculated values
+      Map<String, dynamic>? claimsummary = claimdata['summary'];
+
+      // // Set the fetched user data to the state variables
+      medicalClaim = claimsummary?['medicalClaim'] ?? 0.0;
+      travelClaim = claimsummary?['travelClaim'] ?? 0.0;
+      mealClaim = claimsummary?['mealClaim'] ?? 0.0;
+      fuelClaim = claimsummary?['fuelClaim'] ?? 0.0;
+      entertainmentClaim = claimsummary?['entertainmentClaim'] ?? 0.0;
+
+      unpaidLeaveDay = await getLeaveDays(widget.companyId, _selected);
+
+      // Call the function to get the monthly working time
+      Map<String, Map<String, dynamic>> monthlyWorkingTime =
+          await getMonthlyWorkingTime(widget.companyId, _selected);
+
+      logger.i('_selected $_selected');
+
+      if (_isUserDataFetched == false) {
+        // Access the 'summary' key to get the calculated values
+        Map<String, dynamic>? summary = monthlyWorkingTime['summary'];
+
+        normalWorkingTime = summary?['normalWorkingTime'] ?? 0.0;
+        normalOT = summary?['normalOT'] ?? 0.0;
+        holidayWorkingTime = summary?['holidayWorkingTime'] ?? 0.0;
+        holidayOT = summary?['holidayOT'] ?? 0.0;
+        lessnormalWorkingTime = summary?['lessnormalWorkingTime'] ?? 0.0;
+        holidayCount = summary?['holidayCount'] ?? 0.0;
+      }
       final userData = await ProfileRepository()
-          .getPreviousUserData(widget.companyId, _selected!);
-      logger.i('_selected $_selected!');
+          .getPreviousUserData(widget.companyId, _selected);
+      logger.i('_selected $_selected');
       logger.i(widget.selectedMonth);
 
       if (userData != null) {
@@ -104,6 +187,7 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
           basicSalary = userData['basicSalary'] ?? '';
           epfNo = userData['epfNo'] ?? '';
           socsoNo = userData['socsoNo'] ?? '';
+          joiningDate = userData['joiningdate'].toDate() ?? '';
 
           nameController.text = name;
           accountNumberController.text = accountNumber;
@@ -111,7 +195,7 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
           epfNoController.text = epfNo;
           socsoNoController.text = socsoNo;
         });
-        bonusAmount = await getBonus('${widget.companyId}', _selected!);
+        bonusAmount = await getBonus('${widget.companyId}', _selected);
         formattedBonusAmount = bonusAmount.toStringAsFixed(2);
 
         // Set the flag to indicate that user data has been fetched
@@ -125,20 +209,6 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
       logger.e('Error fetching user data: $e');
     }
   }
-
-  // Future<String> getUniqueFileName(String baseName, String extension) async {
-  //   final directory = await getExternalStorageDirectory();
-  //   final basePath = directory!.path;
-  //   int suffix = 0;
-
-  //   while (await File(
-  //           '$basePath/$baseName${suffix == 0 ? '' : '($suffix)'}.$extension')
-  //       .exists()) {
-  //     suffix++;
-  //   }
-
-  //   return '$basePath/$baseName${suffix == 0 ? '' : '($suffix)'}.$extension';
-  // }
 
   Future<String> getUniqueFileName(String baseName, String extension) async {
     final directory = '/storage/emulated/0/Download';
@@ -156,76 +226,6 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
     return '$basePath/$baseName${suffix == 0 ? '' : '($suffix)'}.$extension';
   }
 
-  // Future<void> showNotification() async {
-  //   const AndroidNotificationDetails androidPlatformChannelSpecifics =
-  //       AndroidNotificationDetails(
-  //     'your_channel_id',
-  //     'your_channel_name',
-  //     channelDescription: 'your_channel_description',
-  //     importance: Importance.max,
-  //     priority: Priority.high,
-  //   );
-  //   const NotificationDetails platformChannelSpecifics =
-  //       NotificationDetails(android: androidPlatformChannelSpecifics);
-
-  //   // Change 'pdf_path' to the actual path of your PDF file
-  //   // String pdfPath = 'pdf_path';
-
-  //   await flutterLocalNotificationsPlugin.show(
-  //     0,
-  //     '${name}_SalarySlip_${DateFormat('MMMMyyyy').format(widget.selectedMonth!)}.pdf Download Complete',
-  //     'Tap to open the PDF',
-  //     platformChannelSpecifics,
-  //     payload: pdfPath,
-  //   );
-  // }
-
-  // Future<bool> saveAsPDF() async {
-  //   final pdf = pw.Document();
-
-  //   // Use the font in the document
-  //   final font = await PdfGoogleFonts.nunitoExtraLight();
-
-  //   pdf.addPage(
-  //     pw.Page(
-  //       build: (pw.Context context) => pw.Center(
-  //         child: pw.Text('Hello World',
-  //             style: pw.TextStyle(font: font, fontSize: 40)),
-  //       ),
-  //     ),
-  //   );
-
-  //   try {
-  //     final downloadPath = '/storage/emulated/0/Download';
-
-  //     // Create a unique file name within the "Download" directory
-  //     // final uniqueFileName = await getUniqueFileName(
-  //     //     '${name}_SalarySlip_${DateFormat('MMMMyyyy').format(widget.selectedMonth!)}',
-  //     //     'pdf');
-  //     final uniqueFileName =
-  //         '$downloadPath/${name}_SalarySlip_${DateFormat('MMMMyyyy').format(widget.selectedMonth!)}.pdf';
-
-  //     // Create a File object with the unique PDF file name
-  //     final file = File(uniqueFileName);
-
-  //     // Write the PDF content to the file
-  //     await file.writeAsBytes(await pdf.save());
-
-  //     logger.i('PDF file path: ${file.path}');
-
-  //     // Open the file only if the download was successful
-  //     OpenFile.open(file.path);
-  //     // showNotification();
-
-  //     // TODO: Implement logic to handle the saved PDF file
-
-  //     return true; // Download successful
-  //   } catch (e) {
-  //     logger.e('Error saving PDF: $e');
-  //     return false; // Download failed
-  //   }
-  // }
-
   Future<void> showNotification() async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
@@ -234,12 +234,11 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
       channelDescription: 'your_channel_description',
       importance: Importance.max,
       priority: Priority.high,
+      color: const Color.fromARGB(255, 193, 85, 254),
     );
     const NotificationDetails platformChannelSpecifics =
         NotificationDetails(android: androidPlatformChannelSpecifics);
 
-    // Change 'pdf_path' to the actual path of your PDF file
-    // String pdfPath = 'pdf_path';
     final Set<int> usedNotificationIds = {};
     Random random = Random();
     int notificationId;
@@ -266,64 +265,6 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
 
     // Use the font in the document
     final font = await PdfGoogleFonts.nunitoExtraLight();
-
-    // pw.Row _buildInfoRow(String label, num value, {bool isInteger = false}) {
-    //   final pw.BorderSide borderSide = pw.BorderSide(
-    //     color: PdfColors.black, // You can customize the color
-    //     width: 1.0, // Adjust the border width as needed
-    //   );
-
-    //   return pw.Row(
-    //     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-    //     children: [
-    //       pw.Container(
-    //         decoration: pw.BoxDecoration(
-    //           border: pw.Border(bottom: borderSide),
-    //         ),
-    //         child: pw.Text(label, style: pw.TextStyle(fontSize: 14)),
-    //       ),
-    //       pw.Container(
-    //         decoration: pw.BoxDecoration(
-    //           border: pw.Border(bottom: borderSide),
-    //         ),
-    //         child: pw.Text(
-    //           'RM ${isInteger ? value.toInt() : value.toStringAsFixed(2)}',
-    //           style: pw.TextStyle(fontSize: 14),
-    //         ),
-    //       ),
-    //     ],
-    //   );
-    // }
-    // pw.Table _buildInfoTable(String label, num value,
-    //     {bool isInteger = false}) {
-    //   final pw.TableBorder border = pw.TableBorder.all(
-    //     color: PdfColors.grey, // Customize the color
-    //     width: 0.5, // Adjust the border width as needed
-    //   );
-
-    //   return pw.Table(
-    //     border: border,
-    //     children: [
-    //       pw.TableRow(
-    //         children: [
-    //           pw.Container(
-    //             width: 150,
-    //             padding: const pw.EdgeInsets.all(8),
-    //             child: pw.Text(label, style: pw.TextStyle(fontSize: 14)),
-    //           ),
-    //           pw.Container(
-    //             width: 150,
-    //             padding: const pw.EdgeInsets.all(8),
-    //             child: pw.Text(
-    //               'RM ${isInteger ? value.toInt() : value.toStringAsFixed(2)}',
-    //               style: pw.TextStyle(fontSize: 14),
-    //             ),
-    //           ),
-    //         ],
-    //       ),
-    //     ],
-    //   );
-    // }
 
     pw.Table _buildInfoTable(String label, String value, bool alignRight) {
       final pw.TableBorder border = pw.TableBorder.all(
@@ -394,7 +335,8 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
                     : pw.Alignment.centerLeft,
                 child: pw.Text(
                   (inputString == "OT")
-                      ? (basicSalary / 20 / 8 * rate).toStringAsFixed(2)
+                      ? (basicSalary / weekdayCount / 8 * rate)
+                          .toStringAsFixed(2)
                       : (rate).toStringAsFixed(2),
                   style: pw.TextStyle(fontSize: 12),
                 ),
@@ -407,7 +349,7 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
                     : pw.Alignment.centerLeft,
                 child: pw.Text(
                   (inputString == "OT")
-                      ? (hour * (basicSalary / 20 / 8 * rate))
+                      ? (hour * (basicSalary / weekdayCount / 8 * rate))
                           .toStringAsFixed(2)
                       : (hour + rate).toStringAsFixed(2),
                   style: pw.TextStyle(fontSize: 12),
@@ -441,7 +383,7 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
                       right: 0,
                       bottom: 0,
                       child: pw.Text(
-                        ' ${DateFormat('MMMM yyyy').format(_selected!)} (Monthly)',
+                        ' ${DateFormat('MMMM yyyy').format(_selected)} (Monthly)',
                         style: pw.TextStyle(
                           fontWeight: pw.FontWeight.bold,
                           fontSize: 14,
@@ -478,7 +420,8 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
               _buildInfoTable(
                   'Basic Salary', basicSalary.toStringAsFixed(2), true),
 
-              _buildInfoTable('Total Overtime', '5.0', true),
+              _buildInfoTable('Total Overtime',
+                  calculateTotalOT().toStringAsFixed(2), true),
 
               pw.Table(
                 border: pw.TableBorder.all(
@@ -539,18 +482,35 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
                 ],
               ),
 
-              _build4ColumnTable('[OT1.5]', 3, 1.5, 'OT', true),
-              _build4ColumnTable('[OT2.0]', 3, 2.0, 'OT', true),
-              _buildInfoTable('Medical Claim', '200.0', true),
-              _buildInfoTable('Meal Claim', '300.0', true),
-              _buildInfoTable('Total No Pay', '-100', true),
+              _build4ColumnTable('[OT1.5]', normalOT, 1.5, 'OT', true),
+              _build4ColumnTable(
+                  '[OT2.0]', holidayWorkingTime, 2.0, 'OT', true),
+              _build4ColumnTable('[OT3.0]', holidayOT, 3.0, 'OT', true),
+              if (medicalClaim != 0.0)
+                _buildInfoTable(
+                    'Medical Claim', medicalClaim.toStringAsFixed(2), true),
+              if (travelClaim != 0.0)
+                _buildInfoTable(
+                    'Travel Claim', travelClaim.toStringAsFixed(2), true),
+              if (mealClaim != 0.0)
+                _buildInfoTable(
+                    'Meal Claim', mealClaim.toStringAsFixed(2), true),
+              if (fuelClaim != 0.0)
+                _buildInfoTable(
+                    'Fuel Claim', fuelClaim.toStringAsFixed(2), true),
+              if (entertainmentClaim != 0.0)
+                _buildInfoTable('Entertainment Claim',
+                    entertainmentClaim.toStringAsFixed(2), true),
+              _buildInfoTable(
+                  'Total No Pay', totalnopay().toStringAsFixed(2), true),
               _buildInfoTable('Bonus', formattedBonusAmount, true),
               _buildInfoTable(
                   'Statutory Contribution',
                   '${(calculateEPF('employer') + calculateEPF('employee') + calculateSOCSO('employer') + calculateSOCSO('employee') + (calculateEIS() * 2.0)).toStringAsFixed(2)}',
                   true),
 
-              _buildInfoTable('Net Salary', '-100', true),
+              _buildInfoTable(
+                  'Net Salary', calculateNetSalary().toStringAsFixed(2), true),
               pw.SizedBox(height: 10),
               pw.Text('Statutory Contribution:',
                   style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
@@ -682,8 +642,15 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
         future: fetchUserData(), // Replace with your data fetching function
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(
-              child: CircularProgressIndicator(),
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 10), // Adjust the height as needed
+                  Text('Loading...'),
+                ],
+              ),
             );
           } else if (snapshot.hasError) {
             return Center(
@@ -702,14 +669,25 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
                     child: GestureDetector(
                       onTap: () async {
                         // Show date picker and update the text when a date is selected
-                        DateTime? pickedDate = await showMonthYearPicker(
+                        pickedDate = (await showMonthYearPicker(
                           context: context,
-                          initialDate: _selected ?? DateTime.now(),
-                          firstDate: DateTime(1900),
+                          initialDate: _selected,
+                          firstDate: DateTime(2000),
                           lastDate: DateTime(2100),
-                        );
+                        ))!;
 
-                        if (pickedDate != null) {
+                        pickedDate =
+                            DateTime(pickedDate.year, pickedDate.month + 1, 0);
+
+                        if (pickedDate.isBefore(joiningDate)) {
+                          // Notify the user that the selected date is after the joining date
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                  'Selected date is before the joining date. Please choose again.'),
+                            ),
+                          );
+                        } else if (pickedDate != null) {
                           setState(() {
                             _selected = pickedDate;
                             monthYearController.text =
@@ -732,7 +710,7 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
                               // Month-Year Text
                               Text(
                                 DateFormat('MMM yyyy').format(
-                                    _selected!), // Format the selected month and year
+                                    _selected), // Format the selected month and year
                                 // monthYearController.text, // Show selected month and year
                                 style: TextStyle(
                                   fontSize: 16,
@@ -765,7 +743,7 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
                   ),
                   SizedBox(height: 5),
                   Text(
-                    'Pay Period: 1 ${DateFormat('MMM yyyy').format(_selected!)} - ${DateFormat('dd MMM yyyy').format(DateTime(_selected!.year, _selected!.month + 1, 0))}',
+                    'Pay Period: 1 ${DateFormat('MMM yyyy').format(_selected)} - ${DateFormat('dd MMM yyyy').format(DateTime(_selected.year, _selected.month + 1, 0))}',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   SizedBox(height: 16.0),
@@ -791,7 +769,7 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
   }
 
   num calculateEPF(String name) {
-    num tempSalary = basicSalary + bonusAmount;
+    num tempSalary = basicSalary + bonusAmount - totalnopay();
 
     // // Convert tempSalary to string
     // String tempSalaryString = tempSalary.toString();
@@ -893,7 +871,7 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
   }
 
   num calculateEIS() {
-    num wages = basicSalary + bonusAmount;
+    num wages = basicSalary + bonusAmount - totalnopay();
     num baseWage = 200; // RM200 as the starting point
     num baseContribution = 0.50; // 50 sen for the base wage
     num increaseRate =
@@ -922,10 +900,11 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
   }
 
   num calculateSOCSO(String name) {
-    num wages = basicSalary + bonusAmount;
+    num wages = basicSalary + bonusAmount - totalnopay();
     num baseWage = 200; // RM200 as the starting point
-    num baseContribution = (baseWage * 2 + 100) / 2 * 0.0175;
+    // num baseContribution = (baseWage * 2 + 100) / 2 * 0.0175;
     num rate = 0.0;
+
     if (wages > 5000) wages = 5000; //capped at RM5000
     if (name == 'employee') {
       rate = 0.005;
@@ -935,7 +914,7 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
 
     if (wages <= baseWage) {
       // If wages are RM200 or below, use the base contribution
-      return baseContribution;
+      return 0.00;
     } else {
       // Remove the tens place from wages
       num adjustedWages = (wages ~/ 100) * 100;
@@ -973,8 +952,186 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
         (calculateEIS() * 2.0);
   }
 
+  num calculateEmployeeStatutoryContribution() {
+    return calculateEPF('employee') +
+        calculateSOCSO('employee') +
+        (calculateEIS());
+  }
+
   num calculateNetSalary() {
-    return basicSalary + bonusAmount - calculateStatutoryContribution();
+    num netSalary = basicSalary +
+        bonusAmount +
+        calculateTotalOT() -
+        calculateEmployeeStatutoryContribution() -
+        insuffientHoursFine() -
+        (unpaidLeaveDay['Unpaid']!) * (basicSalary / weekdayCount);
+
+    return max(0, netSalary);
+  }
+
+  // void fetchMonthlyWorkingTime() async {
+  //   String companyId = 'yourCompanyId'; // Replace with the actual companyId
+  //   DateTime selectedDate =
+  //       DateTime(2023, 1); // Replace with the actual selectedDate
+
+  //   try {
+  //     Map<String, dynamic> monthlyWorkingTime =
+  //         await getMonthlyWorkingTime(companyId, selectedDate);
+
+  //     // Print or use the retrieved working time data
+  //     logger.i('Monthly Working Time:');
+  //     monthlyWorkingTime.forEach((date, data) {
+  //       logger.i(
+  //           '$date: Total Working Time: ${data['totalWorkingTime']}, Is Holiday: ${data['isHoliday']}');
+  //     });
+  //   } catch (e) {
+  //     logger.i('Error fetching monthly working time: $e');
+  //     // Handle the error, e.g., display an error message
+  //   }
+  // }
+
+  num calculateTotalOT() {
+    return (basicSalary / weekdayCount / 8 * 1.5 * normalOT) +
+        (basicSalary / weekdayCount / 8 * 2.0 * holidayWorkingTime) +
+        (basicSalary / weekdayCount / 8 * 3.0 * holidayOT);
+  }
+
+  num mustWorkTime() {
+    num monthlyWorkingTime = weekdayCount * 8;
+    num holidayHours = holidayCount * 8;
+    num mustWorkTime = monthlyWorkingTime - holidayHours;
+    if (unpaidLeaveDay['Unpaid'] != 0.0) {
+      mustWorkTime -= (unpaidLeaveDay['Unpaid']! * 8);
+    }
+    if (unpaidLeaveDay['Annual'] != 0.0) {
+      mustWorkTime -= (unpaidLeaveDay['Annual']! * 8);
+    }
+
+    return mustWorkTime;
+  }
+
+  num insuffientHoursFine() {
+    if (normalWorkingTime < 160) {
+      return (mustWorkTime() - normalWorkingTime) *
+          (basicSalary / weekdayCount / 8);
+    } else {
+      return 0.0;
+    }
+  }
+
+  num totalnopay() {
+    return insuffientHoursFine() +
+        (unpaidLeaveDay['Unpaid']! * (basicSalary / weekdayCount));
+  }
+
+  Widget _buildOvertimeDetails() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (normalOT != 0.0 || holidayWorkingTime != 0.0 || holidayOT != 0.0)
+          Column(
+            children: [
+              _buildRow(
+                'TOTAL OVER TIME',
+                (calculateTotalOT().toStringAsFixed(2)),
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'OT Period(s) 01-${DateFormat('MM-yyyy').format(_selected)} to ${DateFormat('dd-MM-yyyy').format(DateTime(_selected.year, _selected.month + 1, 0))}',
+                ),
+              ),
+              SizedBox(height: 8.0),
+            ],
+          ),
+        if (normalOT != 0.0)
+          Column(
+            children: [
+              _buildRow(
+                '[OT 1.5] ${normalOT.toStringAsFixed(2)} Hrs x ${(basicSalary / weekdayCount / 8 * 1.5).toStringAsFixed(2)}',
+                (basicSalary / weekdayCount / 8 * 1.5 * normalOT)
+                    .toStringAsFixed(2),
+              ),
+              SizedBox(height: 8.0),
+            ],
+          ),
+        if (holidayWorkingTime != 0.0)
+          Column(
+            children: [
+              _buildRow(
+                '[OT 2.0] ${holidayWorkingTime.toStringAsFixed(2)} Hrs x ${(basicSalary / weekdayCount / 8 * 2.0).toStringAsFixed(2)}',
+                (basicSalary / weekdayCount / 8 * 2.0 * holidayWorkingTime)
+                    .toStringAsFixed(2),
+              ),
+              SizedBox(height: 8.0),
+            ],
+          ),
+        if (holidayOT != 0.0)
+          Column(
+            children: [
+              _buildRow(
+                '[OT 3.0] ${holidayOT.toStringAsFixed(2)} Hrs x ${(basicSalary / weekdayCount / 8 * 3.0).toStringAsFixed(2)}',
+                (basicSalary / weekdayCount / 8 * 3.0 * holidayOT)
+                    .toStringAsFixed(2),
+              ),
+              SizedBox(height: 8.0),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Widget _buildClaimDetails() {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      if (medicalClaim != 0.0 ||
+          travelClaim != 0.0 ||
+          mealClaim != 0.0 ||
+          fuelClaim != 0.0 ||
+          entertainmentClaim != 0.0)
+        Column(
+          children: [
+            Text(
+              'CLAIM',
+            ),
+          ],
+        ),
+      if (medicalClaim != 0.0)
+        Column(
+          children: [
+            _buildRow(' - MEDICAL CLAIM', medicalClaim.toStringAsFixed(2)),
+            SizedBox(height: 8.0),
+          ],
+        ),
+      if (travelClaim != 0.0)
+        Column(
+          children: [
+            _buildRow(' - TRAVEL CLAIM', travelClaim.toStringAsFixed(2)),
+            SizedBox(height: 8.0),
+          ],
+        ),
+      if (mealClaim != 0.0)
+        Column(
+          children: [
+            _buildRow(' - MEAL CLAIM', mealClaim.toStringAsFixed(2)),
+            SizedBox(height: 8.0),
+          ],
+        ),
+      if (fuelClaim != 0.0)
+        Column(
+          children: [
+            _buildRow(' - FUEL CLAIM', fuelClaim.toStringAsFixed(2)),
+            SizedBox(height: 8.0),
+          ],
+        ),
+      if (entertainmentClaim != 0.0)
+        Column(
+          children: [
+            _buildRow(' - ENTERTAINMENT CLAIM',
+                entertainmentClaim.toStringAsFixed(2)),
+            SizedBox(height: 8.0),
+          ],
+        ),
+    ]);
   }
 
   Widget _buildPayrollDetails() {
@@ -988,41 +1145,21 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildRow(
-              'BASIC PAY(20 Days x ${(basicSalary / 20).toStringAsFixed(2)})',
+              'BASIC PAY($weekdayCount Days x ${(basicSalary / weekdayCount).toStringAsFixed(2)})',
               (basicSalary).toStringAsFixed(2)),
-          SizedBox(height: 8.0),
-          _buildRow('TOTAL OVER TIME', '125.25'),
-          SizedBox(height: 8.0),
-          Text(
-            'OT Period(s) 01-${DateFormat('MM-yyyy').format(_selected!)} to ${DateFormat('dd-MM-yyyy').format(DateTime(_selected!.year, _selected!.month + 1, 0))}',
-          ),
-          SizedBox(height: 8.0),
-          // _buildOvertimeDetails(),
-          _buildRow(
-              '[OT 1.5] 3.00 Hrs x ${(basicSalary / 20 / 8 * 1.5).toStringAsFixed(2)}',
-              (basicSalary / 20 / 8 * 1.5 * 3.0).toStringAsFixed(2)),
-          SizedBox(height: 8.0),
-
-          _buildRow(
-              '[OT 2.0] 4.00 Hrs x ${(basicSalary / 20 / 8 * 2.0).toStringAsFixed(2)}',
-              (basicSalary / 20 / 8 * 2.0 * 4.0).toStringAsFixed(2)),
           SizedBox(height: 8.0),
           _buildRow('BONUS', formattedBonusAmount),
           SizedBox(height: 8.0),
+          _buildOvertimeDetails(),
+          _buildClaimDetails(),
+          _buildRow('TOTAL NO PAY', totalnopay().toStringAsFixed(2)),
           Text(
-            'CLAIM',
+            '[${DateFormat('yyyy-MM').format(_selected)}-01 TO ${DateFormat('yyyy-MM-dd').format(DateTime(_selected.year, _selected.month + 1, 0))}]',
           ),
-          SizedBox(height: 8.0),
-          _buildRow(' - MEDICAL CLAIM', '200.00'),
-          _buildRow(' - TRANSPORTATION CLAIM', '200.00'),
-          _buildRow(' - MEAL CLAIM', '200.00'),
-          SizedBox(height: 8.0),
-          _buildRow('TOTAL NO PAY', '-100.00'),
           Text(
-            '[${DateFormat('yyyy-MM').format(_selected!)}-01 TO ${DateFormat('yyyy-MM-dd').format(DateTime(_selected!.year, _selected!.month + 1, 0))}]',
-          ),
-          Text('- Unpaid Leaves - 1.00 Days = 100.00'),
-          Text('- Insufficient Hours Fine - 1.8 Hours = 254.75'),
+              '- Unpaid Leaves - ${unpaidLeaveDay['Unpaid']} Days = ${((unpaidLeaveDay['Unpaid']!) * (basicSalary / weekdayCount)).toStringAsFixed(2)}'),
+          Text(
+              '- Insufficient Hours Fine - ${(mustWorkTime() - normalWorkingTime).toStringAsFixed(2)} Hours = ${(insuffientHoursFine().toStringAsFixed(2))}'),
           SizedBox(height: 8.0),
           _buildRow('STATUTORY CONTRIBUTION',
               (calculateStatutoryContribution().toStringAsFixed(2))),
@@ -1032,7 +1169,7 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
           _buildRow('- EMPLOYEE EIS',
               ('${calculateEIS()}0')), //0.2% of the basic salary
           _buildRow('- EMPLOYEE SOCSO',
-              ('${calculateSOCSO('employee')}')), //0.5% of the basic salary
+              ('${calculateSOCSO('employee')}0')), //0.5% of the basic salary
           _buildRow('- EMPLOYER EPF',
               '${calculateEPF('employer')}.00'), //13% of the basic salary(after deduct unpaid salary)
           _buildRow(
@@ -1040,50 +1177,27 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
             ('${calculateEIS()}0'), //0.2% of the basic salary
           ),
           _buildRow('- EMPLOYER SOCSO',
-              ('${calculateSOCSO('employer')}')), //1.75% of the basic salary
+              ('${calculateSOCSO('employer')}0')), //1.75% of the basic salary
           SizedBox(height: 16.0),
 
           _buildRow('NET SALARY',
-              (calculateNetSalary().toStringAsFixed(2))), //Net Salary
+              ((calculateNetSalary()).toStringAsFixed(2))), //Net Salary
         ],
       ),
     );
   }
 
-  Widget _buildOvertimeDetails() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildRow('[OT 1.5] 3.00 Hrs x ${basicSalary / 20 / 8 * 1.5}',
-            (basicSalary / 20 / 8 * 1.5 * 3.0).toStringAsFixed(2)),
-        _buildRow('[OT 2.0] 4.00 Hrs x ${basicSalary / 20 / 8 * 2.0}',
-            (basicSalary / 20 / 8 * 2.0 * 4.0).toStringAsFixed(2)),
-      ],
-    );
-  }
-
-//   Widget _buildRow(String leftText, String rightText) {
-//     return Row(
-//       children: [
-//         Expanded(
-//           flex: 2, // Adjust the flex value as needed
-
-//           child: Text(
-//             leftText,
-//             textAlign: TextAlign.left,
-//           ),
-//         ),
-//         Expanded(
-//           flex: 1,
-//           child: Text(
-//             rightText,
-//             textAlign: TextAlign.right,
-//           ),
-//         ),
-//       ],
-//     );
-//   }
-// }
+  // Widget _buildOvertimeDetails() {
+  //   return Column(
+  //     crossAxisAlignment: CrossAxisAlignment.start,
+  //     children: [
+  //       _buildRow('[OT 1.5] 3.00 Hrs x ${basicSalary / 20 / 8 * 1.5}',
+  //           (basicSalary / 20 / 8 * 1.5 * 3.0).toStringAsFixed(2)),
+  //       _buildRow('[OT 2.0] 4.00 Hrs x ${basicSalary / 20 / 8 * 2.0}',
+  //           (basicSalary / 20 / 8 * 2.0 * 4.0).toStringAsFixed(2)),
+  //     ],
+  //   );
+  // }
 
   Widget _buildRow(String leftText, String rightText, {bool bold = false}) {
     return Row(
@@ -1104,6 +1218,8 @@ class _ViewSalaryPageState extends State<ViewSalaryPage> {
             style: TextStyle(
                 fontWeight: bold ? FontWeight.bold : FontWeight.normal),
             textAlign: TextAlign.right,
+            softWrap: false, // Do not wrap to multiple lines
+            overflow: TextOverflow.ellipsis, // Truncate text if it overflows
           ),
         ),
       ],

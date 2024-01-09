@@ -44,9 +44,6 @@ final List<String> banks = [
   'UOB Bank',
   'United Overseas Bank (Malaysia)',
   'Zurich Insurance Malaysia',
-  'Bank A',
-  'Bank B',
-  'Bank C',
 ];
 
 class EditProfilePage extends StatefulWidget {
@@ -768,10 +765,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
               child: Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 // Call your deactivateUser function here
                 deactivateUser(widget.companyId);
+
                 Navigator.pop(context); // Close the dialog
+                setState(() {
+                  isEditing = !isEditing;
+                });
+
+                // Show SnackBar after successful deactivation
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('User deactivated successfully'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
               },
               child: Text('Deactivate'),
             ),

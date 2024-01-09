@@ -68,7 +68,7 @@ class _AddBonusPageState extends State<AddBonusPage> {
   Future<void> _selectDate(BuildContext context) async {
     picked = await showMonthYearPicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: picked ?? DateTime.now(),
       firstDate: DateTime.now(),
       lastDate: DateTime(2101),
     );

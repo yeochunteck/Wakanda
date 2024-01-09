@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_application_1/data/repositories/profile_repository.dart';
 import 'package:flutter_application_1/profile_page.dart';
 import 'package:flutter_application_1/edit_profile_page.dart';
-// import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:month_year_picker/month_year_picker.dart';
 import 'package:flutter_application_1/view_salary_page.dart';
 import 'package:intl/intl.dart';
@@ -124,51 +124,54 @@ class _SalaryPageState extends State<SalaryPage> {
 
     for (var doc in querySnapshot.docs) {
       final userData = doc.data() as Map<String, dynamic>;
+      final position = userData['position'];
 
-      logger.i('userData in loop: ${userData}');
-      logger.i('doc.id ${doc.id}');
-      final userName = userData['name'].toString();
+      if (position != "Manager") {
+        logger.i('userData in loop: ${userData}');
+        logger.i('doc.id ${doc.id}');
+        final userName = userData['name'].toString();
 
-      // Check if searchTerm is null or empty, or if the userName is exactly equal to the searchTerm
-      if (searchTerm == null ||
-          searchTerm.isEmpty ||
-          userName.contains(searchTerm.toLowerCase())) {
-        // Fetch the 'salaryHistory' subcollection
-        final QuerySnapshot salarySnapshot = await _firestore
-            .collection('users')
-            .doc(doc.id)
-            .collection('salaryHistory')
-            .orderBy('effectiveDate', descending: true)
-            .get();
+        // Check if searchTerm is null or empty, or if the userName is exactly equal to the searchTerm
+        if (searchTerm == null ||
+            searchTerm.isEmpty ||
+            userName.contains(searchTerm.toLowerCase())) {
+          // Fetch the 'salaryHistory' subcollection
+          final QuerySnapshot salarySnapshot = await _firestore
+              .collection('users')
+              .doc(doc.id)
+              .collection('salaryHistory')
+              .orderBy('effectiveDate', descending: true)
+              .get();
 
-        // Iterate over the 'salaryHistory' documents (if any)
-        for (var salaryDoc in salarySnapshot.docs) {
-          final salaryData = salaryDoc.data() as Map<String, dynamic>;
+          // Iterate over the 'salaryHistory' documents (if any)
+          for (var salaryDoc in salarySnapshot.docs) {
+            final salaryData = salaryDoc.data() as Map<String, dynamic>;
 
-          DateTime effectiveDate = salaryData['effectiveDate'].toDate();
-          effectiveDate = effectiveDate.add(const Duration(hours: 8));
-          logger.i('Effective Date: $effectiveDate');
-          logger.i('Current Basic Salary: ${salaryData['basicSalary']}');
-          logger.i('EPFNo: ${salaryData['epfNo']}');
+            DateTime effectiveDate = salaryData['effectiveDate'].toDate();
+            effectiveDate = effectiveDate.add(const Duration(hours: 8));
+            logger.i('Effective Date: $effectiveDate');
+            logger.i('Current Basic Salary: ${salaryData['basicSalary']}');
+            logger.i('EPFNo: ${salaryData['epfNo']}');
 
-          logger.i('Selected Date: $selectedDate');
-          logger
-              .i('Comparison Result: ${effectiveDate.isBefore(selectedDate)}');
+            logger.i('Selected Date: $selectedDate');
+            logger.i(
+                'Comparison Result: ${effectiveDate.isBefore(selectedDate)}');
 
-          logger.i('salaryData last: $salaryData');
-          // Assuming 'effectiveDate' is a DateTime field in your salary document
-          if (salaryData['effectiveDate'] != null &&
-              effectiveDate.isBefore(selectedDate)) {
-            logger
-                .i("salaryData['effectiveDate'] $salaryData['effectiveDate']");
-            // This salary entry is effective within the selected month
-            final num basicSalaryTemp = salaryData['basicSalary'] ?? 0.0;
-            userData['basicSalary'] = basicSalaryTemp;
-            logger.i(userData['image']);
-            // Add the user data with basic salary to the result list
+            logger.i('salaryData last: $salaryData');
+            // Assuming 'effectiveDate' is a DateTime field in your salary document
+            if (salaryData['effectiveDate'] != null &&
+                effectiveDate.isBefore(selectedDate)) {
+              logger.i(
+                  "salaryData['effectiveDate'] $salaryData['effectiveDate']");
+              // This salary entry is effective within the selected month
+              final num basicSalaryTemp = salaryData['basicSalary'] ?? 0.0;
+              userData['basicSalary'] = basicSalaryTemp;
+              logger.i(userData['image']);
+              // Add the user data with basic salary to the result list
 
-            filteredUsers.add(userData);
-            break; // Break the loop since we found the relevant salary entry
+              filteredUsers.add(userData);
+              break; // Break the loop since we found the relevant salary entry
+            }
           }
         }
       }
