@@ -16,7 +16,7 @@ jobs:
 
     steps:
     -name: Checkout Repository
-     uses: actions/checkout@v4.1.1
+     uses: actions/checkout@v4
 
     -name: Set Up Java
       uses: action/setup-jave@v4.0.0
